@@ -1,11 +1,21 @@
 export default function SettingsPage() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-2">Settings</h1>
-      <p className="text-muted-foreground text-sm mb-8">Gateway configuration and access management</p>
-      <div className="bg-card border border-border rounded-xl p-12 text-center">
-        <span className="text-4xl mb-4 block">⚙️</span>
-        <p className="text-muted-foreground">Settings panel coming soon — Phase 2</p>
+    <div className="px-8 py-8 max-w-[1200px]">
+      <div className="mb-8">
+        <h1 className="text-[22px] font-bold tracking-tight">Settings</h1>
+        <p className="text-[13px] mt-1" style={{ color: 'var(--text-muted)' }}>
+          Gateway configuration, channels, and access management
+        </p>
+      </div>
+      <div className="rounded-xl border p-16 text-center"
+        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+        <div className="text-4xl mb-3 opacity-40">◉</div>
+        <p className="text-[13px] font-medium" style={{ color: 'var(--text-muted)' }}>
+          Settings panel coming in Phase 2
+        </p>
+        <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+          Agent config, channel bindings, cron management
+        </p>
       </div>
     </div>
   );

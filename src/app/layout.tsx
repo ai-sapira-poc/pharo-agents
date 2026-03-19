@@ -1,50 +1,75 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Pharo Agents",
-  description: "Cloud management interface for Sapira AI agents",
+  description: "AI Agent Fleet Management",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const navItems = [
+  { href: "/", label: "Dashboard", icon: "◎" },
+  { href: "/skills", label: "Skills", icon: "◈" },
+  { href: "/settings", label: "Settings", icon: "◉" },
+];
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <div className="flex h-screen">
-          {/* Sidebar */}
-          <aside className="w-64 border-r border-border bg-card flex flex-col">
-            <div className="p-6 border-b border-border">
-              <h1 className="text-xl font-bold text-primary">⚡ Pharo Agents</h1>
-              <p className="text-xs text-muted-foreground mt-1">Agent Management Platform</p>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      </head>
+      <body>
+        <style>{`
+          .nav-link { color: var(--text-secondary); background: transparent; transition: all 150ms; }
+          .nav-link:hover { color: var(--text-primary); background: var(--bg-overlay); transform: translateX(2px); }
+          .agent-card { border-color: var(--border-subtle); transition: all 200ms; }
+          .agent-card:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-muted); }
+          .back-link { color: var(--text-muted); }
+          .back-link:hover { color: var(--accent); }
+        `}</style>
+
+        <div className="flex h-screen overflow-hidden">
+          <aside className="w-[260px] flex-shrink-0 flex flex-col border-r"
+            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                  style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>⚡</div>
+                <div>
+                  <h1 className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    Pharo Agents
+                  </h1>
+                  <p className="text-[11px] font-medium tracking-wide uppercase"
+                    style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Fleet Control</p>
+                </div>
+              </div>
             </div>
-            <nav className="flex-1 p-4 space-y-1">
-              <a href="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors">
-                <span>📊</span> Dashboard
-              </a>
-              <a href="/skills" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors">
-                <span>🧠</span> Skills
-              </a>
-              <a href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors">
-                <span>⚙️</span> Settings
-              </a>
+            <nav className="flex-1 px-3 py-4 space-y-0.5">
+              {navItems.map((item) => (
+                <Link key={item.href} href={item.href}
+                  className="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium">
+                  <span className="text-base opacity-60">{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
             </nav>
-            <div className="p-4 border-t border-border">
-              <p className="text-xs text-muted-foreground">OpenClaw Gateway</p>
-              <p className="text-xs text-green-500 flex items-center gap-1 mt-1">
-                <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-                Connected — localhost:18789
-              </p>
+            <div className="px-5 py-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                    style={{ background: 'var(--success)' }}></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2"
+                    style={{ background: 'var(--success)' }}></span>
+                </span>
+                <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Gateway connected</span>
+              </div>
+              <p className="text-[11px] mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>localhost:18789</p>
             </div>
           </aside>
-
-          {/* Main content */}
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+          <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-root)' }}>{children}</main>
         </div>
       </body>
     </html>
