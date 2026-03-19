@@ -1,6 +1,6 @@
 import { getAgents, getCronJobs } from "@/lib/openclaw-client";
 import Link from "next/link";
-import { Users, Coins, MessageSquare, Clock, Bot, ChevronRight } from "lucide-react";
+import { Users, Hash, MessageCircle, Timer, ArrowRight, Circle } from "lucide-react";
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -16,97 +16,80 @@ export default async function Dashboard() {
   const active = agents.filter((a) => a.status === "active").length;
 
   const stats = [
-    { label: "Active Agents", value: active, sub: `of ${agents.length}`, color: "var(--success)", Icon: Users },
-    { label: "Total Tokens", value: fmt(totalTokens), sub: "all sessions", color: "var(--accent)", Icon: Coins },
-    { label: "Sessions", value: totalSessions, sub: "active", color: "var(--warning)", Icon: MessageSquare },
-    { label: "Cron Jobs", value: crons.filter((c) => c.enabled).length, sub: `of ${crons.length}`, color: "var(--accent)", Icon: Clock },
+    { label: "Active", value: `${active}/${agents.length}`, Icon: Users },
+    { label: "Tokens", value: fmt(totalTokens), Icon: Hash },
+    { label: "Sessions", value: String(totalSessions), Icon: MessageCircle },
+    { label: "Scheduled", value: `${crons.filter((c) => c.enabled).length}`, Icon: Timer },
   ];
 
   return (
-    <div className="px-8 py-8 max-w-[1400px]">
-      <div className="mb-8">
-        <h1 className="text-[22px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
-        <p className="text-[13px] mt-1" style={{ color: 'var(--text-muted)' }}>Real-time overview of your AI agent fleet</p>
+    <div className="px-10 py-10 max-w-[1200px]">
+      <div className="mb-10">
+        <h1 className="text-[36px] leading-tight">Dashboard</h1>
+        <p className="text-[14px] mt-1" style={{ color: 'var(--text-muted)' }}>Overview of your agent fleet</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-10">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl p-4 border transition-all duration-200"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+          <div key={s.label} className="border rounded-lg p-4"
+            style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>
                 {s.label}
-              </p>
-              <s.Icon size={14} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+              </span>
+              <s.Icon size={14} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[28px] font-extrabold tracking-tight" style={{ color: s.color }}>{s.value}</span>
-              <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{s.sub}</span>
-            </div>
+            <p className="text-[26px] font-medium mt-2" style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic' }}>
+              {s.value}
+            </p>
           </div>
         ))}
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Agents</h2>
-        <span className="text-[11px] font-mono px-2 py-0.5 rounded"
-          style={{ background: 'var(--bg-raised)', color: 'var(--text-muted)' }}>{agents.length} registered</span>
+      <div className="mb-5">
+        <h2 className="text-[24px]">Agents</h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="space-y-3">
         {agents.map((agent) => {
           const pct = agent.contextTokens ? Math.round(((agent.contextUsed || 0) / agent.contextTokens) * 100) : 0;
-          const barColor = pct > 80 ? 'var(--danger)' : pct > 50 ? 'var(--warning)' : 'var(--accent)';
-          const statusColor = agent.status === "active" ? 'var(--success)' : agent.status === "idle" ? 'var(--warning)' : 'var(--danger)';
-          const statusBg = agent.status === "active" ? 'var(--success-muted)' : agent.status === "idle" ? 'var(--warning-muted)' : 'var(--danger-muted)';
 
           return (
             <Link key={agent.id} href={`/agents/${agent.id}`}
-              className="agent-card group block rounded-xl p-5 border">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: 'var(--bg-raised)' }}>
-                    <Bot size={20} style={{ color: 'var(--accent)', opacity: 0.8 }} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-[14px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        {agent.name || agent.id}
-                      </h3>
-                      <ChevronRight size={14} className="opacity-0 group-hover:opacity-60 transition-opacity"
-                        style={{ color: 'var(--text-muted)' }} />
-                    </div>
-                    <p className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{agent.model}</p>
+              className="agent-card group flex items-center gap-6 border rounded-lg p-5"
+              style={{ background: 'var(--bg-surface)' }}>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-1">
+                  <Circle size={8} fill={agent.status === "active" ? "var(--success)" : "var(--warning)"}
+                    stroke="none" />
+                  <h3 className="text-[15px] font-semibold">{agent.name || agent.id}</h3>
+                  <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                    {agent.model}
+                  </span>
+                </div>
+                <p className="text-[13px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                  {agent.purpose}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-8 flex-shrink-0">
+                <div className="text-right">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Tokens</p>
+                  <p className="text-[14px] font-mono">{fmt(agent.totalTokens || 0)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Context</p>
+                  <p className="text-[14px] font-mono">{pct}%</p>
+                </div>
+                <div className="w-24">
+                  <div className="w-full rounded-full h-1" style={{ background: 'var(--bg-overlay)' }}>
+                    <div className="h-1 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(pct, 100)}%`, background: 'var(--text-primary)' }} />
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-md"
-                  style={{ background: statusBg, color: statusColor }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor }}></span>
-                  {agent.status}
-                </span>
-              </div>
-
-              <p className="text-[12.5px] leading-relaxed mb-4 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                {agent.purpose}
-              </p>
-
-              <div className="grid grid-cols-3 gap-4 mb-3">
-                {[
-                  { label: "Tokens", value: fmt(agent.totalTokens || 0) },
-                  { label: "Sessions", value: String(agent.sessionCount || 0) },
-                  { label: "Context", value: `${pct}%` },
-                ].map((m) => (
-                  <div key={m.label}>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{m.label}</p>
-                    <p className="text-[14px] font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>{m.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="w-full rounded-full h-1" style={{ background: 'var(--bg-overlay)' }}>
-                <div className="h-1 rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${Math.min(pct, 100)}%`, background: barColor }} />
+                <ArrowRight size={16} strokeWidth={1.5} className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--text-muted)' }} />
               </div>
             </Link>
           );

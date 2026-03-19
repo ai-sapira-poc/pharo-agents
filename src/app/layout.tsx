@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LayoutDashboard, Brain, Settings, Zap } from "lucide-react";
+import { Grid3x3, Layers, Sliders, Activity } from "lucide-react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/skills", label: "Skills", icon: Brain },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/", label: "Dashboard", icon: Grid3x3 },
+  { href: "/skills", label: "Skills", icon: Layers },
+  { href: "/settings", label: "Settings", icon: Sliders },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,49 +21,35 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       </head>
       <body>
         <div className="flex h-screen overflow-hidden">
-          <aside className="w-[260px] flex-shrink-0 flex flex-col border-r"
+          <aside className="w-[240px] flex-shrink-0 flex flex-col border-r"
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-            <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                  <Zap size={16} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h1 className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                    Pharo Agents
-                  </h1>
-                  <p className="text-[11px] font-medium tracking-wide uppercase"
-                    style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Fleet Control</p>
-                </div>
-              </div>
+            <div className="px-5 py-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+              <h1 className="text-[28px] leading-none" style={{ fontFamily: 'var(--font-heading)', fontWeight: 300, fontStyle: 'italic' }}>
+                Pharo
+              </h1>
+              <p className="text-[11px] font-medium uppercase tracking-[0.15em] mt-1"
+                style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
+                Agent Fleet
+              </p>
             </div>
-            <nav className="flex-1 px-3 py-4 space-y-0.5">
+            <nav className="flex-1 px-3 py-5 space-y-0.5">
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href}
-                  className="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium">
-                  <item.icon size={16} strokeWidth={2} style={{ opacity: 0.6 }} />
+                  className="nav-link flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium">
+                  <item.icon size={15} strokeWidth={1.5} />
                   {item.label}
                 </Link>
               ))}
             </nav>
             <div className="px-5 py-4 border-t space-y-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <ThemeToggle />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                      style={{ background: 'var(--success)' }}></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2"
-                      style={{ background: 'var(--success)' }}></span>
-                  </span>
-                  <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Gateway connected</span>
-                </div>
-                <p className="text-[11px] mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>localhost:18789</p>
+              <div className="flex items-center gap-2">
+                <Activity size={12} style={{ color: 'var(--success)' }} />
+                <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Gateway connected</span>
               </div>
             </div>
           </aside>
