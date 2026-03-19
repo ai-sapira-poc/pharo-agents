@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LayoutDashboard, Brain, Settings, Zap } from "lucide-react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,9 +10,9 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: "◎" },
-  { href: "/skills", label: "Skills", icon: "◈" },
-  { href: "/settings", label: "Settings", icon: "◉" },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/skills", label: "Skills", icon: Brain },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,8 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
             <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-                  style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>⚡</div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: 'var(--accent-muted)', color: 'var(--accent)' }}>
+                  <Zap size={16} strokeWidth={2.5} />
+                </div>
                 <div>
                   <h1 className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
                     Pharo Agents
@@ -43,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href}
                   className="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium">
-                  <span className="text-base opacity-60">{item.icon}</span>
+                  <item.icon size={16} strokeWidth={2} style={{ opacity: 0.6 }} />
                   {item.label}
                 </Link>
               ))}
