@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,15 +23,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <style>{`
-          .nav-link { color: var(--text-secondary); background: transparent; transition: all 150ms; }
-          .nav-link:hover { color: var(--text-primary); background: var(--bg-overlay); transform: translateX(2px); }
-          .agent-card { border-color: var(--border-subtle); transition: all 200ms; }
-          .agent-card:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-muted); }
-          .back-link { color: var(--text-muted); }
-          .back-link:hover { color: var(--accent); }
-        `}</style>
-
         <div className="flex h-screen overflow-hidden">
           <aside className="w-[260px] flex-shrink-0 flex flex-col border-r"
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
@@ -56,17 +48,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
               ))}
             </nav>
-            <div className="px-5 py-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                    style={{ background: 'var(--success)' }}></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2"
-                    style={{ background: 'var(--success)' }}></span>
-                </span>
-                <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Gateway connected</span>
+            <div className="px-5 py-4 border-t space-y-3" style={{ borderColor: 'var(--border-subtle)' }}>
+              <ThemeToggle />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                      style={{ background: 'var(--success)' }}></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2"
+                      style={{ background: 'var(--success)' }}></span>
+                  </span>
+                  <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Gateway connected</span>
+                </div>
+                <p className="text-[11px] mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>localhost:18789</p>
               </div>
-              <p className="text-[11px] mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>localhost:18789</p>
             </div>
           </aside>
           <main className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-root)' }}>{children}</main>
