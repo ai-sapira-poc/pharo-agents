@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Grid3x3, Layers, Sliders, Activity } from "lucide-react";
+import { Grid3x3, Layers, Sliders, Activity, Server } from "lucide-react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 const navItems = [
   { href: "/", label: "Dashboard", icon: Grid3x3 },
   { href: "/skills", label: "Skills", icon: Layers },
+  { href: "/gateways", label: "Gateways", icon: Server },
   { href: "/settings", label: "Settings", icon: Sliders },
 ];
 

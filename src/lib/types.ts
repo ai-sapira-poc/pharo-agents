@@ -10,6 +10,8 @@ export interface Agent {
   contextTokens?: number;
   contextUsed?: number;
   sessionCount?: number;
+  gatewayId?: string;
+  gatewayName?: string;
   purpose?: string;
   emoji?: string;
   tools?: Record<string, unknown>;
