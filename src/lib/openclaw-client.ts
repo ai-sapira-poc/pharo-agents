@@ -5,6 +5,7 @@ export interface Gateway {
   id: string;
   name: string;
   tunnel_url: string | null;
+  api_token: string | null;
   machine_host: string | null;
   machine_os: string | null;
   openclaw_version: string | null;
@@ -14,17 +15,40 @@ export interface Gateway {
   registered_at: string;
 }
 
+async function invokeGatewayTool(tunnelUrl: string, apiToken: string, tool: string, args: Record<string, unknown> = {}) {
+  const res = await fetch(`${tunnelUrl}/tools/invoke`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tool, args }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(15000),
+  });
+  const data = await res.json();
+  if (!data.ok) return null;
+  
+  // Parse the text content if present
+  const text = data.result?.content?.[0]?.text;
+  if (text) {
+    try { return JSON.parse(text); } catch { return data.result?.details || text; }
+  }
+  return data.result?.details || null;
+}
+
 export async function getGateways(): Promise<Gateway[]> {
   const { data } = await supabase
     .from("gateways")
     .select("*")
     .order("registered_at", { ascending: true });
 
-  // Mark gateways as offline if no heartbeat in 1 hour
   const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
   return (data || []).map((gw: Record<string, unknown>) => ({
     ...gw,
-    status: gw.last_seen_at && (gw.last_seen_at as string) > oneHourAgo ? "online" : gw.status === "pending" ? "pending" : "offline",
+    status: gw.tunnel_url 
+      ? (gw.last_seen_at && (gw.last_seen_at as string) > oneHourAgo ? "online" : "offline")
+      : gw.status === "pending" ? "pending" : "offline",
   })) as Gateway[];
 }
 
@@ -33,48 +57,126 @@ export async function getGateway(id: string): Promise<Gateway | null> {
   return data as Gateway | null;
 }
 
-export async function getAgents(gatewayId?: string): Promise<Agent[]> {
-  let query = supabase.from("gateway_agents").select("*, gateways(name)").order("name");
-  if (gatewayId) query = query.eq("gateway_id", gatewayId);
+export async function getAgents(): Promise<Agent[]> {
+  const gateways = await getGateways();
+  const allAgents: Agent[] = [];
 
-  const { data } = await query;
+  for (const gw of gateways) {
+    if (!gw.tunnel_url || !gw.api_token) {
+      // Fallback to stored data for gateways without tunnels
+      const { data: stored } = await supabase
+        .from("gateway_agents")
+        .select("*")
+        .eq("gateway_id", gw.id);
+      
+      for (const a of (stored || [])) {
+        allAgents.push({
+          id: a.agent_id,
+          name: a.name || a.agent_id,
+          model: a.model || "unknown",
+          workspace: a.workspace || "",
+          status: (a.status || "active") as "active" | "idle" | "error",
+          purpose: a.purpose || "",
+          totalTokens: 0,
+          contextTokens: 1000000,
+          contextUsed: 0,
+          sessionCount: 0,
+          gatewayId: gw.id,
+          gatewayName: gw.name,
+        });
+      }
+      continue;
+    }
 
-  if (!data || data.length === 0) {
-    // Fallback to static config for backwards compat
-    return getStaticAgents();
+    // Fetch LIVE session data from the gateway
+    try {
+      const sessionsData = await invokeGatewayTool(
+        gw.tunnel_url, gw.api_token,
+        "sessions_list", { limit: 100, messageLimit: 0 }
+      );
+
+      const sessions = sessionsData?.sessions || [];
+      
+      // Group sessions by agent (extract agentId from session key)
+      const agentMap = new Map<string, { tokens: number; context: number; contextMax: number; sessions: number; model: string; lastActive: number }>();
+      
+      for (const s of sessions) {
+        // Session key format: agent:{agentId}:{channel}:...
+        const parts = (s.key as string).split(":");
+        const agentId = parts[1] || "main";
+        
+        const existing = agentMap.get(agentId) || { tokens: 0, context: 0, contextMax: 0, sessions: 0, model: "unknown", lastActive: 0 };
+        existing.tokens += (s.totalTokens as number) || 0;
+        existing.context += (s.totalTokens as number) || 0;
+        existing.contextMax = Math.max(existing.contextMax, (s.contextTokens as number) || 0);
+        existing.sessions += 1;
+        existing.model = (s.model as string) || existing.model;
+        existing.lastActive = Math.max(existing.lastActive, (s.updatedAt as number) || 0);
+        agentMap.set(agentId, existing);
+      }
+
+      // Also get stored agent metadata for names/purposes
+      const { data: stored } = await supabase
+        .from("gateway_agents")
+        .select("*")
+        .eq("gateway_id", gw.id);
+      
+      const storedMap = new Map((stored || []).map((a: Record<string, unknown>) => [a.agent_id as string, a]));
+
+      // Merge live data with stored metadata
+      const agentIds = new Set([...agentMap.keys(), ...(stored || []).map((a: Record<string, unknown>) => a.agent_id as string)]);
+      
+      for (const agentId of agentIds) {
+        if (agentId === "main") continue; // Skip default main agent
+        const live = agentMap.get(agentId);
+        const meta = storedMap.get(agentId) as Record<string, unknown> | undefined;
+        
+        allAgents.push({
+          id: agentId,
+          name: (meta?.name as string) || agentId,
+          model: live?.model || (meta?.model as string) || "unknown",
+          workspace: (meta?.workspace as string) || "",
+          status: live ? "active" : "idle",
+          purpose: (meta?.purpose as string) || "",
+          totalTokens: live?.tokens || 0,
+          contextTokens: live?.contextMax || 1000000,
+          contextUsed: live?.context || 0,
+          sessionCount: live?.sessions || 0,
+          gatewayId: gw.id,
+          gatewayName: gw.name,
+        });
+      }
+
+      // Update gateway status
+      await supabase.from("gateways").update({
+        status: "online",
+        last_seen_at: new Date().toISOString(),
+        agent_count: agentIds.size - (agentIds.has("main") ? 1 : 0),
+      }).eq("id", gw.id);
+
+    } catch (err) {
+      // Gateway unreachable — use stored data
+      const { data: stored } = await supabase
+        .from("gateway_agents")
+        .select("*")
+        .eq("gateway_id", gw.id);
+      
+      for (const a of (stored || [])) {
+        allAgents.push({
+          id: a.agent_id,
+          name: a.name || a.agent_id,
+          model: a.model || "unknown",
+          workspace: a.workspace || "",
+          status: "error",
+          purpose: a.purpose || "",
+          totalTokens: 0, contextTokens: 1000000, contextUsed: 0, sessionCount: 0,
+          gatewayId: gw.id, gatewayName: gw.name,
+        });
+      }
+    }
   }
 
-  // Enrich with usage data
-  const { data: snapshots } = await supabase
-    .from("daily_usage_snapshots")
-    .select("*")
-    .order("date", { ascending: false })
-    .limit(50);
-
-  return (data as Record<string, unknown>[]).map((a) => {
-    const agentSnaps = (snapshots || []).filter(
-      (s: Record<string, unknown>) => s.agent_id === a.agent_id
-    );
-    const latest = agentSnaps[0] as Record<string, unknown> | undefined;
-    const totalTokens = latest
-      ? (latest.total_tokens_in as number) + (latest.total_tokens_out as number)
-      : 0;
-
-    return {
-      id: a.agent_id as string,
-      name: (a.name || a.agent_id) as string,
-      model: (a.model || "unknown") as string,
-      workspace: (a.workspace || "") as string,
-      status: (a.status || "active") as "active" | "idle" | "error",
-      purpose: (a.purpose || "") as string,
-      totalTokens,
-      contextTokens: 1000000,
-      contextUsed: totalTokens,
-      sessionCount: agentSnaps.length,
-      gatewayId: a.gateway_id as string,
-      gatewayName: ((a as Record<string, unknown>).gateways as Record<string, unknown>)?.name as string || "",
-    };
-  });
+  return allAgents;
 }
 
 export async function getAgent(id: string): Promise<Agent | null> {
@@ -83,45 +185,16 @@ export async function getAgent(id: string): Promise<Agent | null> {
 }
 
 export async function getCronJobs(): Promise<CronJob[]> {
-  // Static for now — will be dynamic once gateway API proxy works
-  return [
-    {
-      id: "95da43b8", name: "sapira-email-ingester", agentId: "hansolo", enabled: true,
-      schedule: { kind: "cron", expr: "0 8,14 * * 1-5", tz: "Europe/Madrid" },
-      payload: { kind: "agentTurn" },
-      state: { lastRunStatus: "ok", nextRunAtMs: Date.now() + 3600000 },
-    },
-  ];
+  // TODO: fetch from gateways via tools/invoke cron list
+  return [];
 }
 
 export async function getWindowResetTime() {
   const WINDOW_MS = 5 * 60 * 60 * 1000;
-  const { data: lastLimit } = await supabase
-    .from("rate_limit_events")
-    .select("recorded_at")
-    .order("recorded_at", { ascending: false })
-    .limit(1);
-
-  let windowStart: Date;
-  if (lastLimit && lastLimit.length > 0) {
-    windowStart = new Date(lastLimit[0].recorded_at as string);
-  } else {
-    const now = new Date();
-    const midnight = new Date(now);
-    midnight.setUTCHours(0, 0, 0, 0);
-    const windowsSinceMidnight = Math.floor((now.getTime() - midnight.getTime()) / WINDOW_MS);
-    windowStart = new Date(midnight.getTime() + windowsSinceMidnight * WINDOW_MS);
-  }
-
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setUTCHours(0, 0, 0, 0);
+  const windowsSinceMidnight = Math.floor((now.getTime() - midnight.getTime()) / WINDOW_MS);
+  const windowStart = new Date(midnight.getTime() + windowsSinceMidnight * WINDOW_MS);
   return { resetAt: new Date(windowStart.getTime() + WINDOW_MS), windowHours: 5 };
-}
-
-// Fallback static agents (used when no gateways registered)
-function getStaticAgents(): Agent[] {
-  return [
-    { id: "hansolo", name: "Han Solo", model: "claude-opus-4-6", workspace: "", status: "active", purpose: "Chief of Staff & Knowledge Manager", totalTokens: 0, contextTokens: 1000000, contextUsed: 0, sessionCount: 0 },
-    { id: "juninhojr", name: "Juninho Jr", model: "claude-opus-4-6", workspace: "", status: "active", purpose: "PM & Team Lead", totalTokens: 0, contextTokens: 1000000, contextUsed: 0, sessionCount: 0 },
-    { id: "zezinho", name: "Zezinho", model: "claude-opus-4-6", workspace: "", status: "active", purpose: "PM & Tech Lead", totalTokens: 0, contextTokens: 1000000, contextUsed: 0, sessionCount: 0 },
-    { id: "tinker", name: "Tinker", model: "openrouter/auto", workspace: "", status: "idle", purpose: "Fullstack Developer", totalTokens: 0, contextTokens: 200000, contextUsed: 0, sessionCount: 0 },
-  ];
 }

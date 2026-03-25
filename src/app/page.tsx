@@ -74,6 +74,7 @@ export default async function Dashboard() {
                   <Circle size={8} fill={agent.status === "active" ? "var(--success)" : "var(--warning)"} stroke="none" />
                   <h3 className="text-[15px] font-semibold">{agent.name || agent.id}</h3>
                   <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{agent.model}</span>
+                    {(agent as any).gatewayName && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-raised)', color: 'var(--text-muted)' }}>{(agent as any).gatewayName}</span>}
                 </div>
                 <p className="text-[13px] truncate" style={{ color: 'var(--text-secondary)' }}>{agent.purpose}</p>
               </div>
