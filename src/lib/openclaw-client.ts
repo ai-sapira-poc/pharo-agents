@@ -15,26 +15,27 @@ export interface Gateway {
   registered_at: string;
 }
 
-async function invokeGatewayTool(tunnelUrl: string, apiToken: string, tool: string, args: Record<string, unknown> = {}) {
-  const res = await fetch(`${tunnelUrl}/tools/invoke`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ tool, args }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
-  });
-  const data = await res.json();
-  if (!data.ok) return null;
-  
-  // Parse the text content if present
-  const text = data.result?.content?.[0]?.text;
-  if (text) {
-    try { return JSON.parse(text); } catch { return data.result?.details || text; }
+async function invokeGatewayTool(tunnelUrl: string, apiToken: string, tool: string, args: Record<string, unknown> = {}, sessionKey?: string) {
+  try {
+    const body: Record<string, unknown> = { tool, args };
+    if (sessionKey) body.sessionKey = sessionKey;
+    
+    const res = await fetch(`${tunnelUrl}/tools/invoke`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+    if (!data.ok) return null;
+    return data.result?.details || null;
+  } catch {
+    return null;
   }
-  return data.result?.details || null;
 }
 
 export async function getGateways(): Promise<Gateway[]> {
@@ -42,14 +43,7 @@ export async function getGateways(): Promise<Gateway[]> {
     .from("gateways")
     .select("*")
     .order("registered_at", { ascending: true });
-
-  const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-  return (data || []).map((gw: Record<string, unknown>) => ({
-    ...gw,
-    status: gw.tunnel_url 
-      ? (gw.last_seen_at && (gw.last_seen_at as string) > oneHourAgo ? "online" : "offline")
-      : gw.status === "pending" ? "pending" : "offline",
-  })) as Gateway[];
+  return (data || []) as Gateway[];
 }
 
 export async function getGateway(id: string): Promise<Gateway | null> {
@@ -58,125 +52,83 @@ export async function getGateway(id: string): Promise<Gateway | null> {
 }
 
 export async function getAgents(): Promise<Agent[]> {
-  const gateways = await getGateways();
-  const allAgents: Agent[] = [];
+  // Get all stored agents from Supabase
+  const { data: storedAgents } = await supabase
+    .from("gateway_agents")
+    .select("*, gateways(id, name, tunnel_url, api_token, status)")
+    .order("name");
 
-  for (const gw of gateways) {
-    if (!gw.tunnel_url || !gw.api_token) {
-      // Fallback to stored data for gateways without tunnels
-      const { data: stored } = await supabase
-        .from("gateway_agents")
-        .select("*")
-        .eq("gateway_id", gw.id);
-      
-      for (const a of (stored || [])) {
-        allAgents.push({
-          id: a.agent_id,
-          name: a.name || a.agent_id,
-          model: a.model || "unknown",
-          workspace: a.workspace || "",
-          status: (a.status || "active") as "active" | "idle" | "error",
-          purpose: a.purpose || "",
-          totalTokens: 0,
-          contextTokens: 1000000,
-          contextUsed: 0,
-          sessionCount: 0,
-          gatewayId: gw.id,
-          gatewayName: gw.name,
-        });
-      }
-      continue;
-    }
+  if (!storedAgents || storedAgents.length === 0) return [];
 
-    // Fetch LIVE session data from the gateway
-    try {
-      const sessionsData = await invokeGatewayTool(
-        gw.tunnel_url, gw.api_token,
-        "sessions_list", { limit: 100, messageLimit: 0 }
-      );
+  // Get latest usage snapshots
+  const { data: snapshots } = await supabase
+    .from("daily_usage_snapshots")
+    .select("*")
+    .order("date", { ascending: false })
+    .limit(100);
 
-      const sessions = sessionsData?.sessions || [];
-      
-      // Group sessions by agent (extract agentId from session key)
-      const agentMap = new Map<string, { tokens: number; context: number; contextMax: number; sessions: number; model: string; lastActive: number }>();
-      
-      for (const s of sessions) {
-        // Session key format: agent:{agentId}:{channel}:...
-        const parts = (s.key as string).split(":");
-        const agentId = parts[1] || "main";
-        
-        const existing = agentMap.get(agentId) || { tokens: 0, context: 0, contextMax: 0, sessions: 0, model: "unknown", lastActive: 0 };
-        existing.tokens += (s.totalTokens as number) || 0;
-        existing.context += (s.totalTokens as number) || 0;
-        existing.contextMax = Math.max(existing.contextMax, (s.contextTokens as number) || 0);
-        existing.sessions += 1;
-        existing.model = (s.model as string) || existing.model;
-        existing.lastActive = Math.max(existing.lastActive, (s.updatedAt as number) || 0);
-        agentMap.set(agentId, existing);
-      }
+  // Try to get live session data from each connected gateway
+  const gateways = new Map<string, { tunnel_url: string; api_token: string }>();
+  const liveSessionsByAgent = new Map<string, { tokens: number; sessions: number; model: string; cost: number }>();
 
-      // Also get stored agent metadata for names/purposes
-      const { data: stored } = await supabase
-        .from("gateway_agents")
-        .select("*")
-        .eq("gateway_id", gw.id);
-      
-      const storedMap = new Map((stored || []).map((a: Record<string, unknown>) => [a.agent_id as string, a]));
-
-      // Merge live data with stored metadata
-      const agentIds = new Set([...agentMap.keys(), ...(stored || []).map((a: Record<string, unknown>) => a.agent_id as string)]);
-      
-      for (const agentId of agentIds) {
-        if (agentId === "main") continue; // Skip default main agent
-        const live = agentMap.get(agentId);
-        const meta = storedMap.get(agentId) as Record<string, unknown> | undefined;
-        
-        allAgents.push({
-          id: agentId,
-          name: (meta?.name as string) || agentId,
-          model: live?.model || (meta?.model as string) || "unknown",
-          workspace: (meta?.workspace as string) || "",
-          status: live ? "active" : "idle",
-          purpose: (meta?.purpose as string) || "",
-          totalTokens: live?.tokens || 0,
-          contextTokens: live?.contextMax || 1000000,
-          contextUsed: live?.context || 0,
-          sessionCount: live?.sessions || 0,
-          gatewayId: gw.id,
-          gatewayName: gw.name,
-        });
-      }
-
-      // Update gateway status
-      await supabase.from("gateways").update({
-        status: "online",
-        last_seen_at: new Date().toISOString(),
-        agent_count: agentIds.size - (agentIds.has("main") ? 1 : 0),
-      }).eq("id", gw.id);
-
-    } catch (err) {
-      // Gateway unreachable — use stored data
-      const { data: stored } = await supabase
-        .from("gateway_agents")
-        .select("*")
-        .eq("gateway_id", gw.id);
-      
-      for (const a of (stored || [])) {
-        allAgents.push({
-          id: a.agent_id,
-          name: a.name || a.agent_id,
-          model: a.model || "unknown",
-          workspace: a.workspace || "",
-          status: "error",
-          purpose: a.purpose || "",
-          totalTokens: 0, contextTokens: 1000000, contextUsed: 0, sessionCount: 0,
-          gatewayId: gw.id, gatewayName: gw.name,
-        });
-      }
+  for (const agent of storedAgents) {
+    const gw = agent.gateways as Record<string, unknown> | null;
+    if (gw?.tunnel_url && gw?.api_token && !gateways.has(gw.id as string)) {
+      gateways.set(gw.id as string, { tunnel_url: gw.tunnel_url as string, api_token: gw.api_token as string });
     }
   }
 
-  return allAgents;
+  // Fetch live sessions from each gateway (once per gateway)
+  for (const [gwId, { tunnel_url, api_token }] of gateways) {
+    const sessionsData = await invokeGatewayTool(tunnel_url, api_token, "sessions_list", { limit: 100, messageLimit: 0 });
+    const sessions = sessionsData?.sessions || [];
+    
+    for (const s of sessions) {
+      const parts = ((s as Record<string, unknown>).key as string).split(":");
+      const agentId = parts[1] || "main";
+      const key = `${gwId}:${agentId}`;
+      const existing = liveSessionsByAgent.get(key) || { tokens: 0, sessions: 0, model: "unknown", cost: 0 };
+      existing.tokens += ((s as Record<string, unknown>).totalTokens as number) || 0;
+      existing.sessions += 1;
+      existing.model = ((s as Record<string, unknown>).model as string) || existing.model;
+      existing.cost += ((s as Record<string, unknown>).estimatedCostUsd as number) || 0;
+      liveSessionsByAgent.set(key, existing);
+    }
+  }
+
+  return storedAgents.map((a) => {
+    const gw = a.gateways as Record<string, unknown> | null;
+    const gwId = gw?.id as string || "";
+    const liveKey = `${gwId}:${a.agent_id}`;
+    const live = liveSessionsByAgent.get(liveKey);
+    
+    // Get usage from snapshots
+    const agentSnaps = (snapshots || []).filter(
+      (s: Record<string, unknown>) => s.agent_id === a.agent_id
+    );
+    const latestSnap = agentSnaps[0] as Record<string, unknown> | undefined;
+    const snapTokens = latestSnap 
+      ? ((latestSnap.total_tokens_in as number) || 0) + ((latestSnap.total_tokens_out as number) || 0)
+      : 0;
+
+    const totalTokens = live?.tokens || snapTokens;
+    
+    return {
+      id: a.agent_id,
+      name: a.name || a.agent_id,
+      model: live?.model || a.model || "unknown",
+      workspace: a.workspace || "",
+      status: (live ? "active" : a.status || "idle") as "active" | "idle" | "error",
+      purpose: a.purpose || "",
+      totalTokens,
+      contextTokens: 1000000,
+      contextUsed: totalTokens,
+      sessionCount: live?.sessions || agentSnaps.length || 0,
+      gatewayId: gwId,
+      gatewayName: (gw?.name as string) || "",
+      estimatedCost: live?.cost || 0,
+    } as Agent;
+  });
 }
 
 export async function getAgent(id: string): Promise<Agent | null> {
@@ -185,7 +137,6 @@ export async function getAgent(id: string): Promise<Agent | null> {
 }
 
 export async function getCronJobs(): Promise<CronJob[]> {
-  // TODO: fetch from gateways via tools/invoke cron list
   return [];
 }
 
