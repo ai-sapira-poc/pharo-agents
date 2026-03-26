@@ -15,137 +15,69 @@ export interface Gateway {
   registered_at: string;
 }
 
-async function invokeGatewayTool(tunnelUrl: string, apiToken: string, tool: string, args: Record<string, unknown> = {}, sessionKey?: string) {
-  try {
-    const body: Record<string, unknown> = { tool, args };
-    if (sessionKey) body.sessionKey = sessionKey;
-    
-    const res = await fetch(`${tunnelUrl}/tools/invoke`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    });
-    const data = await res.json();
-    if (!data.ok) return null;
-    return data.result?.details || null;
-  } catch {
-    return null;
-  }
+export interface AgentConfig {
+  skills: Array<{ name: string; description: string; path: string; content_preview?: string }>;
+  bindings: Array<{ agentId: string; match: Record<string, string> }>;
+  tools: Record<string, unknown>;
+  subagents: Record<string, unknown>;
+  identity: { soul_preview?: string };
+  sessions: { count: number; total_tokens: number; total_cost: number; models: string[] };
 }
 
 export async function getGateways(): Promise<Gateway[]> {
-  const { data } = await supabase
-    .from("gateways")
-    .select("*")
-    .order("registered_at", { ascending: true });
+  const { data } = await supabase.from("gateways").select("*").order("registered_at");
   return (data || []) as Gateway[];
 }
 
-export async function getGateway(id: string): Promise<Gateway | null> {
-  const { data } = await supabase.from("gateways").select("*").eq("id", id).single();
-  return data as Gateway | null;
-}
-
-export async function getAgents(): Promise<Agent[]> {
-  // Get all stored agents from Supabase
-  const { data: storedAgents } = await supabase
+export async function getAgents(): Promise<(Agent & { config?: AgentConfig })[]> {
+  const { data: stored } = await supabase
     .from("gateway_agents")
-    .select("*, gateways(id, name, tunnel_url, api_token, status)")
+    .select("*, gateways(id, name)")
     .order("name");
 
-  if (!storedAgents || storedAgents.length === 0) return [];
+  if (!stored?.length) return [];
 
-  // Get latest usage snapshots
-  const { data: snapshots } = await supabase
-    .from("daily_usage_snapshots")
-    .select("*")
-    .order("date", { ascending: false })
-    .limit(100);
-
-  // Try to get live session data from each connected gateway
-  const gateways = new Map<string, { tunnel_url: string; api_token: string }>();
-  const liveSessionsByAgent = new Map<string, { tokens: number; sessions: number; model: string; cost: number }>();
-
-  for (const agent of storedAgents) {
-    const gw = agent.gateways as Record<string, unknown> | null;
-    if (gw?.tunnel_url && gw?.api_token && !gateways.has(gw.id as string)) {
-      gateways.set(gw.id as string, { tunnel_url: gw.tunnel_url as string, api_token: gw.api_token as string });
-    }
-  }
-
-  // Fetch live sessions from each gateway (once per gateway)
-  for (const [gwId, { tunnel_url, api_token }] of gateways) {
-    const sessionsData = await invokeGatewayTool(tunnel_url, api_token, "sessions_list", { limit: 100, messageLimit: 0 });
-    const sessions = sessionsData?.sessions || [];
-    
-    for (const s of sessions) {
-      const parts = ((s as Record<string, unknown>).key as string).split(":");
-      const agentId = parts[1] || "main";
-      const key = `${gwId}:${agentId}`;
-      const existing = liveSessionsByAgent.get(key) || { tokens: 0, sessions: 0, model: "unknown", cost: 0 };
-      existing.tokens += ((s as Record<string, unknown>).totalTokens as number) || 0;
-      existing.sessions += 1;
-      existing.model = ((s as Record<string, unknown>).model as string) || existing.model;
-      existing.cost += ((s as Record<string, unknown>).estimatedCostUsd as number) || 0;
-      liveSessionsByAgent.set(key, existing);
-    }
-  }
-
-  return storedAgents.map((a) => {
+  return stored.map((a: Record<string, unknown>) => {
     const gw = a.gateways as Record<string, unknown> | null;
-    const gwId = gw?.id as string || "";
-    const liveKey = `${gwId}:${a.agent_id}`;
-    const live = liveSessionsByAgent.get(liveKey);
+    let parsedConfig: AgentConfig | undefined;
     
-    // Get usage from snapshots
-    const agentSnaps = (snapshots || []).filter(
-      (s: Record<string, unknown>) => s.agent_id === a.agent_id
-    );
-    const latestSnap = agentSnaps[0] as Record<string, unknown> | undefined;
-    const snapTokens = latestSnap 
-      ? ((latestSnap.total_tokens_in as number) || 0) + ((latestSnap.total_tokens_out as number) || 0)
-      : 0;
+    try {
+      const raw = typeof a.config === "string" ? JSON.parse(a.config as string) : a.config;
+      if (raw && typeof raw === "object") parsedConfig = raw as AgentConfig;
+    } catch { /* ignore */ }
 
-    const totalTokens = live?.tokens || snapTokens;
-    
+    const sessions = parsedConfig?.sessions || { count: 0, total_tokens: 0, total_cost: 0, models: [] };
+
     return {
-      id: a.agent_id,
-      name: a.name || a.agent_id,
-      model: live?.model || a.model || "unknown",
-      workspace: a.workspace || "",
-      status: (live ? "active" : a.status || "idle") as "active" | "idle" | "error",
-      purpose: a.purpose || "",
-      totalTokens,
+      id: a.agent_id as string,
+      name: (a.name || a.agent_id) as string,
+      model: (a.model || "unknown") as string,
+      workspace: (a.workspace || "") as string,
+      status: (sessions.count > 0 ? "active" : "idle") as "active" | "idle" | "error",
+      purpose: (a.purpose || "") as string,
+      totalTokens: sessions.total_tokens,
       contextTokens: 1000000,
-      contextUsed: totalTokens,
-      sessionCount: live?.sessions || agentSnaps.length || 0,
-      gatewayId: gwId,
+      contextUsed: sessions.total_tokens,
+      sessionCount: sessions.count,
+      gatewayId: (gw?.id as string) || "",
       gatewayName: (gw?.name as string) || "",
-      estimatedCost: live?.cost || 0,
-    } as Agent;
+      estimatedCost: sessions.total_cost,
+      config: parsedConfig,
+    };
   });
 }
 
-export async function getAgent(id: string): Promise<Agent | null> {
+export async function getAgent(id: string): Promise<(Agent & { config?: AgentConfig }) | null> {
   const agents = await getAgents();
   return agents.find((a) => a.id === id) || null;
 }
 
-export async function getCronJobs(): Promise<CronJob[]> {
-  return [];
-}
+export async function getCronJobs(): Promise<CronJob[]> { return []; }
 
 export async function getWindowResetTime() {
   const WINDOW_MS = 5 * 60 * 60 * 1000;
   const now = new Date();
-  const midnight = new Date(now);
-  midnight.setUTCHours(0, 0, 0, 0);
-  const windowsSinceMidnight = Math.floor((now.getTime() - midnight.getTime()) / WINDOW_MS);
-  const windowStart = new Date(midnight.getTime() + windowsSinceMidnight * WINDOW_MS);
-  return { resetAt: new Date(windowStart.getTime() + WINDOW_MS), windowHours: 5 };
+  const midnight = new Date(now); midnight.setUTCHours(0, 0, 0, 0);
+  const w = Math.floor((now.getTime() - midnight.getTime()) / WINDOW_MS);
+  return { resetAt: new Date(midnight.getTime() + (w + 1) * WINDOW_MS), windowHours: 5 };
 }
