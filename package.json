@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@sapira/ui": "link:../sapira-design-system/packages/ui",
+    "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.49.1",
     "lucide-react": "^0.577.0",
     "next": "^15.4.0-canary.49",

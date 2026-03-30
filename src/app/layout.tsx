@@ -17,6 +17,7 @@ const navItems = [
   { href: "/skills", label: "Skills", iconName: "Layers" },
   { href: "/gateways", label: "Gateways", iconName: "Server" },
   { href: "/settings", label: "Settings", iconName: "Sliders" },
+  { href: "/users", label: "Users", iconName: "Users" },
 ];
 
 async function getGatewaysList() {

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, Layers, Server, Sliders } from "lucide-react";
+import { Grid3x3, Layers, Server, Sliders, Users } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<{ size: number; strokeWidth: number }>> = {
-  Grid3x3, Layers, Server, Sliders,
+  Grid3x3, Layers, Server, Sliders, Users,
 };
 
 export function NavLink({ href, label, iconName }: { href: string; label: string; iconName: string }) {
