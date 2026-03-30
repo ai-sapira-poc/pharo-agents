@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NavLink } from "@/components/nav-link";
 import { GatewaySelector } from "@/components/gateway-selector";
-import { Grid3x3, Layers, Sliders, Server, Activity } from "lucide-react";
+import { Activity } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import "./globals.css";
 
@@ -12,10 +13,10 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: Grid3x3 },
-  { href: "/skills", label: "Skills", icon: Layers },
-  { href: "/gateways", label: "Gateways", icon: Server },
-  { href: "/settings", label: "Settings", icon: Sliders },
+  { href: "/", label: "Dashboard", iconName: "Grid3x3" },
+  { href: "/skills", label: "Skills", iconName: "Layers" },
+  { href: "/gateways", label: "Gateways", iconName: "Server" },
+  { href: "/settings", label: "Settings", iconName: "Sliders" },
 ];
 
 async function getGatewaysList() {
@@ -53,11 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             
             <nav className="flex-1 px-3 py-4 space-y-0.5">
               {navItems.map((item) => (
-                <Link key={item.href} href={item.href}
-                  className="nav-link flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium">
-                  <item.icon size={15} strokeWidth={1.5} />
-                  {item.label}
-                </Link>
+                <NavLink key={item.href} href={item.href} label={item.label} iconName={item.iconName} />
               ))}
             </nav>
             <div className="px-5 py-4 border-t space-y-3" style={{ borderColor: "var(--border-subtle)" }}>
