@@ -12,6 +12,7 @@ export interface Agent {
   sessionCount?: number;
   gatewayId?: string;
   gatewayName?: string;
+  estimatedCost?: number;
   purpose?: string;
   emoji?: string;
   tools?: Record<string, unknown>;

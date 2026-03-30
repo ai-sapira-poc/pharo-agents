@@ -20,6 +20,7 @@ export interface AgentConfig {
   bindings: Array<{ agentId: string; match: Record<string, string> }>;
   tools: Record<string, unknown>;
   subagents: Record<string, unknown>;
+  heartbeat: Record<string, unknown>;
   identity: { soul_preview?: string };
   sessions: { count: number; total_tokens: number; total_cost: number; models: string[] };
 }
@@ -29,29 +30,36 @@ export async function getGateways(): Promise<Gateway[]> {
   return (data || []) as Gateway[];
 }
 
-export async function getAgents(): Promise<(Agent & { config?: AgentConfig })[]> {
-  const { data: stored } = await supabase
-    .from("gateway_agents")
-    .select("*, gateways(id, name)")
-    .order("name");
+export async function getGateway(id: string): Promise<Gateway | null> {
+  const { data } = await supabase.from("gateways").select("*").eq("id", id).single();
+  return data as Gateway | null;
+}
 
+export async function getDefaultGatewayId(): Promise<string | null> {
+  const { data } = await supabase.from("gateways").select("id").order("registered_at").limit(1);
+  return data?.[0]?.id || null;
+}
+
+export async function getAgents(gatewayId?: string): Promise<(Agent & { config?: AgentConfig })[]> {
+  let query = supabase.from("gateway_agents").select("*, gateways(id, name)").order("name");
+  if (gatewayId) query = query.eq("gateway_id", gatewayId);
+
+  const { data: stored } = await query;
   if (!stored?.length) return [];
 
   return stored.map((a: Record<string, unknown>) => {
     const gw = a.gateways as Record<string, unknown> | null;
     let parsedConfig: AgentConfig | undefined;
-    
     try {
       const raw = typeof a.config === "string" ? JSON.parse(a.config as string) : a.config;
       if (raw && typeof raw === "object") parsedConfig = raw as AgentConfig;
     } catch { /* ignore */ }
 
     const sessions = parsedConfig?.sessions || { count: 0, total_tokens: 0, total_cost: 0, models: [] };
-
     return {
       id: a.agent_id as string,
       name: (a.name || a.agent_id) as string,
-      model: (a.model || "unknown") as string,
+      model: (a.model || parsedConfig?.sessions?.models?.[0] || "unknown") as string,
       workspace: (a.workspace || "") as string,
       status: (sessions.count > 0 ? "active" : "idle") as "active" | "idle" | "error",
       purpose: (a.purpose || "") as string,
@@ -67,12 +75,37 @@ export async function getAgents(): Promise<(Agent & { config?: AgentConfig })[]>
   });
 }
 
-export async function getAgent(id: string): Promise<(Agent & { config?: AgentConfig }) | null> {
-  const agents = await getAgents();
+export async function getAgent(id: string, gatewayId?: string): Promise<(Agent & { config?: AgentConfig }) | null> {
+  const agents = await getAgents(gatewayId);
   return agents.find((a) => a.id === id) || null;
 }
 
-export async function getCronJobs(): Promise<CronJob[]> { return []; }
+export async function getGatewaySettings(gatewayId: string): Promise<Record<string, unknown> | null> {
+  const gw = await getGateway(gatewayId);
+  if (!gw?.tunnel_url || !gw?.api_token) return null;
+  
+  // Try to get live status from the gateway
+  try {
+    const res = await fetch(`${gw.tunnel_url}/tools/invoke`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${gw.api_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ tool: "session_status", args: {} }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      return {
+        statusText: data.result?.content?.[0]?.text || "",
+        ...data.result?.details || {},
+      };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 export async function getWindowResetTime() {
   const WINDOW_MS = 5 * 60 * 60 * 1000;

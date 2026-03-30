@@ -11,9 +11,10 @@ function fmt(n: number): string {
 
 export const dynamic = "force-dynamic";
 
-export default async function AgentDetail({ params }: { params: Promise<{ agentId: string }> }) {
+export default async function AgentDetail({ params, searchParams }: { params: Promise<{ agentId: string }>; searchParams: Promise<{ gw?: string }> }) {
   const { agentId } = await params;
-  const agent = await getAgent(agentId);
+  const sp = await searchParams;
+  const agent = await getAgent(agentId, sp.gw || undefined);
   if (!agent) notFound();
   
   const cfg = agent.config;
