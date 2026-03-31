@@ -47,14 +47,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <NavLink key={item.href} href={item.href} label={item.label} iconName={item.iconName} />
           ))}
         </nav>
-        <div className="px-5 py-4 border-t space-y-3" style={{ borderColor: "var(--border-subtle)" }}>
-          <ThemeToggle />
-          <div className="flex items-center gap-2">
-            <Activity size={12} style={{ color: "var(--success)" }} />
-            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              {gateways.length} gateway{gateways.length !== 1 ? "s" : ""}
-            </span>
+        <div className="px-3 py-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+          <div className="flex items-center justify-between px-3 mb-2">
+            <div className="flex items-center gap-2">
+              <Activity size={10} style={{ color: "var(--success)" }} />
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                {gateways.length} gateway{gateways.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <ThemeToggle />
           </div>
+          {user && <UserMenu email={user.email || ""} name={user.profile?.name} />}
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto" style={{ background: "var(--bg-root)" }}>{children}</main>
