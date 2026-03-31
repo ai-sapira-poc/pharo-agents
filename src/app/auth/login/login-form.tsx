@@ -14,7 +14,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"login" | "reset">("login");
+  const [mode, setMode] = useState<"login" | "reset" | "magic">("login");
   const [resetSent, setResetSent] = useState(false);
   const [debug, setDebug] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +47,20 @@ export function LoginForm() {
     const supabase = getSupabase();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/update-password`,
+    });
+    setLoading(false);
+    if (error) setError(error.message);
+    else setResetSent(true);
+  };
+
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(""); setLoading(true);
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + "/" },
     });
     setLoading(false);
     if (error) setError(error.message);
@@ -96,6 +110,15 @@ export function LoginForm() {
               className="w-full mt-3 text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>
               Forgot password?
             </button>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full" style={{ borderTop: "1px solid var(--border-subtle)" }}></div></div>
+              <div className="relative flex justify-center"><span className="px-2 text-[11px]" style={{ background: "var(--bg-root)", color: "var(--text-muted)" }}>or</span></div>
+            </div>
+            <button type="button" onClick={() => setMode("magic")}
+              className="w-full px-4 py-2.5 rounded-lg text-[13px] font-medium border flex items-center justify-center gap-2"
+              style={{ borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}>
+              Sign in with magic link
+            </button>
           </form>
         ) : resetSent ? (
           <div className="text-center">
@@ -117,6 +140,28 @@ export function LoginForm() {
             <button type="button" onClick={() => setMode("login")}
               className="w-full mt-3 text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>Back to sign in</button>
           </form>
+        )} 
+        {mode === "magic" && !resetSent && (
+          <form onSubmit={handleMagicLink}>
+            <p className="text-[13px] mb-4" style={{ color: "var(--text-secondary)" }}>Enter your email and we'll send you a sign-in link.</p>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className={inputClass} style={inputStyle} placeholder="you@company.com" required />
+            {error && <p className="text-[12px] mt-2" style={{ color: "var(--danger)" }}>{error}</p>}
+            <button type="submit" disabled={loading}
+              className="w-full mt-4 px-4 py-2.5 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-2"
+              style={{ background: "var(--text-primary)", color: "var(--bg-root)" }}>
+              {loading ? <Loader2 size={14} className="animate-spin" /> : null} Send magic link
+            </button>
+            <button type="button" onClick={() => setMode("login")}
+              className="w-full mt-3 text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>Back to sign in</button>
+          </form>
+        )}
+        {mode === "magic" && resetSent && (
+          <div className="text-center">
+            <p className="text-[13px] mb-4" style={{ color: "var(--text-secondary)" }}>Check your email for a sign-in link.</p>
+            <button onClick={() => { setMode("login"); setResetSent(false); }}
+              className="text-[12px] font-medium" style={{ color: "var(--text-muted)" }}>Back to sign in</button>
+          </div>
         )}
       </div>
     </div>
