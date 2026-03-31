@@ -3,6 +3,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { GatewaySelector } from "@/components/gateway-selector";
 import { NavLink } from "@/components/nav-link";
 import { Activity } from "lucide-react";
+import { UserMenu } from "@/components/user-menu";
+import { getUser } from "@/lib/supabase-server";
 import { supabase } from "@/lib/supabase";
 
 const navItems = [
@@ -23,6 +25,7 @@ async function getGatewaysList() {
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const gateways = await getGatewaysList();
+  const user = await getUser();
   const defaultGw = gateways[0]?.id || null;
 
   return (
