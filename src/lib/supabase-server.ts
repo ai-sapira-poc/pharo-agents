@@ -26,7 +26,15 @@ export async function getUser() {
 
   // Get profile with role
   const { data: profile } = await sb.from("user_profiles").select("*").eq("id", user.id).single();
-  return { ...user, profile };
+  
+  // Check if user is a workspace admin (can manage users)
+  let canManageUsers = profile?.role === "super_admin";
+  if (!canManageUsers) {
+    const { data: adminAccess } = await sb.from("workspace_access").select("id").eq("user_id", user.id).eq("role", "admin").limit(1);
+    canManageUsers = (adminAccess?.length || 0) > 0;
+  }
+  
+  return { ...user, profile: { ...profile, canManageUsers } };
 }
 
 export async function getUserWorkspaces(userId: string) {

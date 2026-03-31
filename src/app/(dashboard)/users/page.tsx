@@ -11,19 +11,26 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   if (!user) redirect("/auth/login");
 
   const params = await searchParams;
-  const gwId = params.gw;
+  let gwId = params.gw;
   const isSuperAdmin = user.profile?.role === "super_admin";
 
-  // Check access: super_admin or workspace admin
+  // For workspace admins: auto-detect their gateway if not specified
   if (!isSuperAdmin) {
-    if (!gwId) redirect("/");
-    const { data: access } = await supabase
+    // Find gateways where this user is an admin
+    const { data: myAccess } = await supabase
       .from("workspace_access")
-      .select("role")
+      .select("gateway_id, role")
       .eq("user_id", user.id)
-      .eq("gateway_id", gwId)
-      .single();
-    if (access?.role !== "admin") redirect("/");
+      .eq("role", "admin");
+    
+    const adminGateways = myAccess || [];
+    if (adminGateways.length === 0) redirect("/");
+    
+    // Auto-select first admin gateway if none specified
+    if (!gwId) gwId = adminGateways[0].gateway_id;
+    
+    // Verify access to the selected gateway
+    if (!adminGateways.some((a) => a.gateway_id === gwId)) redirect("/");
   }
 
   // Get users (exclude super admins)

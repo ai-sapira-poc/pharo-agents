@@ -12,7 +12,6 @@ const navItems = [
   { href: "/skills", label: "Skills", iconName: "Layers" },
   { href: "/gateways", label: "Gateways", iconName: "Server" },
   { href: "/settings", label: "Settings", iconName: "Sliders" },
-  { href: "/users", label: "Users", iconName: "Users" },
 ];
 
 async function getGatewaysList() {
@@ -46,6 +45,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {navItems.map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} iconName={item.iconName} />
           ))}
+          {(user?.profile?.role === "super_admin" || user?.profile?.canManageUsers) && (
+            <NavLink href="/users" label="Users" iconName="Users" />
+          )}
         </nav>
         <div className="px-3 py-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
           <div className="flex items-center justify-between px-3 mb-2">
