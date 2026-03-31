@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 
 function getSupabase() {
   return createClient(
@@ -20,6 +20,7 @@ export function LoginForm() {
   const [mode, setMode] = useState<"login" | "reset">("login");
   const [resetSent, setResetSent] = useState(false);
   const [debug, setDebug] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
@@ -84,8 +85,15 @@ export function LoginForm() {
               </div>
               <div>
                 <label className="text-[11px] font-semibold uppercase tracking-[0.1em] block mb-1.5" style={{ color: "var(--text-muted)" }}>Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  className={inputClass} style={inputStyle} placeholder="••••••••" required />
+                <div className="relative">
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+                    className={inputClass} style={{ ...inputStyle, paddingRight: '40px' }} placeholder="••••••••" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5"
+                    style={{ color: 'var(--text-muted)' }}>
+                    {showPassword ? <EyeOff size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
+                  </button>
+                </div>
               </div>
             </div>
             {error && <p className="text-[12px] mt-3" style={{ color: "var(--danger)" }}>{error}</p>}
