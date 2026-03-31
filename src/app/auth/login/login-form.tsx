@@ -1,15 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ""
-  );
+  return createSupabaseBrowser();
 }
 
 export function LoginForm() {
@@ -31,15 +28,7 @@ export function LoginForm() {
 
     const supabase = getSupabase();
     
-    // Debug: check if env vars are available
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    if (!url || !key) {
-      setError("Configuration error: Supabase credentials not found");
-      setDebug(`URL: ${url ? "set" : "MISSING"}, Key: ${key ? "set" : "MISSING"}`);
-      setLoading(false);
-      return;
-    }
+    const url = "set"; const key = "set"; // using SSR browser client
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -47,8 +36,8 @@ export function LoginForm() {
       setDebug(`URL: ${url.substring(0, 30)}... | Key: ${key.substring(0, 20)}...`);
       setLoading(false);
     } else {
-      router.push(redirect);
-      router.refresh();
+      // Hard redirect to ensure cookies are sent with the request
+      window.location.href = redirect;
     }
   };
 

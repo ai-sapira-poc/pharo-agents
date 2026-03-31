@@ -1,33 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { Loader2 } from "lucide-react";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
+    setError(""); setLoading(true);
+    const supabase = createSupabaseBrowser();
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/");
-    }
+    if (error) setError(error.message);
+    else window.location.href = "/";
   };
 
   return (
