@@ -31,7 +31,7 @@ export function LoginForm() {
     const sb = createSupabaseBrowser();
     const { error } = await sb.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin + "/" },
+      options: { emailRedirectTo: window.location.origin + "/auth/callback" },
     });
     setLoading(false);
     if (error) setError(error.message);
@@ -43,7 +43,7 @@ export function LoginForm() {
     setError(""); setLoading(true);
     const sb = createSupabaseBrowser();
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/update-password`,
+      redirectTo: `${window.location.origin}/auth/callback`,
     });
     setLoading(false);
     if (error) setError(error.message);
