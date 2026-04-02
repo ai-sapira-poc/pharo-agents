@@ -113,14 +113,33 @@ export async function POST(req: NextRequest) {
         }, { onConflict: "user_id,gateway_id" });
       }
 
-      // Send magic link
-      await supabase.auth.admin.generateLink({
+      // Send invite magic link via Resend
+      const { data: mlData } = await supabase.auth.admin.generateLink({
         type: "magiclink",
         email,
-        options: { redirectTo: "https://agents.pharo-ai.com/" },
+        options: { redirectTo: "https://agents.pharo-ai.com/auth/callback" },
       });
 
-      return NextResponse.json({ ok: true, method: "magic_link", user_id: newUser.user?.id });
+      const mlLink = mlData?.properties?.action_link;
+      const gwNameML = gateway_id ? (await supabase.from("gateways").select("name").eq("id", gateway_id).single())?.data?.name : null;
+
+      if (mlLink) {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer re_fgQwPk1g_4UWw194fyoKGY2Nq4vzdtbhX",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Pharo Agents <noreply@sapira.email>",
+            to: email,
+            subject: "You have been invited to Pharo Agents",
+            html: '<div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;"><h1 style="font-size: 28px; font-weight: 300; font-style: italic; margin-bottom: 24px;">Pharo</h1><p style="font-size: 14px; color: #404040; line-height: 1.6; margin-bottom: 24px;">You have been invited to Pharo Agents' + (gwNameML ? ' — workspace <strong>' + gwNameML + '</strong>' : '') + '. Click below to sign in:</p><a href="' + mlLink + '" style="display: inline-block; background: #0a0a0a; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">Sign in to Pharo Agents</a><p style="font-size: 12px; color: #737373; margin-top: 24px;">If you did not expect this invitation, you can safely ignore this email.</p></div>',
+          }),
+        });
+      }
+
+      return NextResponse.json({ ok: true, method: "magic_link", user_id: newUser.user?.id, invited: true });
     }
 
     return NextResponse.json({ ok: true, method: "magic_link" });
@@ -155,7 +174,37 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, method: "password", user_id: newUser.user?.id });
+  // Send welcome/invite email with magic link
+  if (newUser.user) {
+    try {
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo: "https://agents.pharo-ai.com/auth/callback" },
+      });
+      
+      const actionLink = linkData?.properties?.action_link;
+      const gwName = gateway_id ? (await supabase.from("gateways").select("name").eq("id", gateway_id).single())?.data?.name : null;
+      
+      if (actionLink) {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer re_fgQwPk1g_4UWw194fyoKGY2Nq4vzdtbhX",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Pharo Agents <noreply@sapira.email>",
+            to: email,
+            subject: "You\'ve been invited to Pharo Agents",
+            html: '<div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;"><h1 style="font-size: 28px; font-weight: 300; font-style: italic; margin-bottom: 24px;">Pharo</h1><p style="font-size: 14px; color: #404040; line-height: 1.6; margin-bottom: 8px;">You have been invited to Pharo Agents' + (gwName ? ' — workspace <strong>' + gwName + '</strong>' : '') + '.</p>' + (password ? '<p style="font-size: 14px; color: #404040; line-height: 1.6; margin-bottom: 8px;">Your temporary password is: <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px;">' + password + '</code></p>' : '') + '<p style="font-size: 14px; color: #404040; line-height: 1.6; margin-bottom: 24px;">Click below to sign in:</p><a href="' + actionLink + '" style="display: inline-block; background: #0a0a0a; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">Sign in to Pharo Agents</a><p style="font-size: 12px; color: #737373; margin-top: 24px;">If you did not expect this invitation, you can safely ignore this email.</p></div>',
+          }),
+        });
+      }
+    } catch { /* invite email is best-effort */ }
+  }
+
+  return NextResponse.json({ ok: true, method: "password", user_id: newUser.user?.id, invited: true });
 }
 
 export async function DELETE(req: NextRequest) {

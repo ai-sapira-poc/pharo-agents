@@ -50,7 +50,7 @@ export function UserActions({ gateways, isSuperAdmin, defaultGatewayId }: {
     setLoading(false);
     if (data.error) { setError(data.error); }
     else {
-      setSuccess(data.method === "magic_link" ? "Invitation sent via email" : "User created");
+      setSuccess(data.invited ? "User created — invitation sent via email" : (data.method === "magic_link" ? "Invitation sent via email" : "User created"));
       setTimeout(() => { setShowInvite(false); window.location.reload(); }, 1500);
     }
   };
