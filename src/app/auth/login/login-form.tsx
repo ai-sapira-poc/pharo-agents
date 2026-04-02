@@ -42,12 +42,14 @@ export function LoginForm() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(""); setLoading(true);
-    const sb = createSupabaseBrowser();
-    const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
+    const data = await res.json();
     setLoading(false);
-    if (error) setError(error.message);
+    if (data.error) setError(data.error);
     else setEmailSent(true);
   };
 
