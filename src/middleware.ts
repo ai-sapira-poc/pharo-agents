@@ -7,6 +7,7 @@ export async function middleware(request: NextRequest) {
   // Public routes that don't need auth
   if (
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/gateways/register") ||
     pathname.startsWith("/api/gateways/heartbeat") ||
     pathname === "/setup.sh" ||

@@ -28,13 +28,14 @@ export function LoginForm() {
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(""); setLoading(true);
-    const sb = createSupabaseBrowser();
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+    const res = await fetch("/api/auth/magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
+    const data = await res.json();
     setLoading(false);
-    if (error) setError(error.message);
+    if (data.error) setError(data.error);
     else setEmailSent(true);
   };
 
