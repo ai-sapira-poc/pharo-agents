@@ -9,7 +9,6 @@
 #
 set -euo pipefail
 
-PHARO_URL="${PHARO_URL:-https://pharo-agents.vercel.app}"
 OPENCLAW_CONFIG="${HOME}/.openclaw/openclaw.json"
 OPENCLAW_DIR="${HOME}/.openclaw"
 
@@ -19,7 +18,8 @@ if [ ! -f ~/.pharo-agents/config.json ]; then
   exit 1
 fi
 
-GW_ID=$(python3 -c "import json; print(json.load(open('$HOME/.pharo-agents/config.json'))['gateway_id'])")
+export GW_ID=$(python3 -c "import json; print(json.load(open('$HOME/.pharo-agents/config.json'))['gateway_id'])")
+export PHARO_URL=$(python3 -c "import json; print(json.load(open('$HOME/.pharo-agents/config.json')).get('pharo_url', 'https://pharo-agents.vercel.app'))")
 
 # Collect everything via Python
 python3 << 'PYEOF'
