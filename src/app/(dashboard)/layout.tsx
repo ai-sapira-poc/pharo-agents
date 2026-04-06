@@ -38,7 +38,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             style={{ color: "var(--text-muted)", fontFamily: "var(--font-sans)" }}>Agent Fleet</p>
         </div>
         
-        <GatewaySelector gateways={gateways} currentId={defaultGw} />
+        <Suspense>
+          <GatewaySelector gateways={gateways} currentId={defaultGw} />
+        </Suspense>
         
         <Suspense fallback={<nav className="flex-1 px-3 py-4" />}>
           <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -54,7 +56,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="flex items-center justify-end px-3 mb-2">
             <ThemeToggle />
           </div>
-          {user && <UserMenu email={user.email || ""} name={user.profile?.name} />}
+          {user && <UserMenu email={user.email || ""} name={user.profile?.name} role={user.profile?.role} />}
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto" style={{ background: "var(--bg-root)" }}>{children}</main>

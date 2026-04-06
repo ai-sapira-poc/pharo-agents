@@ -207,7 +207,8 @@ if not agents_config:
     sys.exit(1)
 
 defaults = agents_config.get("defaults", {})
-primary_model = defaults.get("model", {}).get("primary", "unknown")
+model_val = defaults.get("model", {})
+primary_model = model_val.get("primary", "unknown") if isinstance(model_val, dict) else model_val
 agent_list = agents_config.get("list", [])
 bindings = config.get("bindings", [])
 
