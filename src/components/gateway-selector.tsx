@@ -30,7 +30,7 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
     setOpen(false);
     const params = new URLSearchParams();
     if (gwId) params.set("gw", gwId);
-    router.push(`/${params.toString() ? "?" + params.toString() : ""}`);
+    router.push(`${pathname}${params.toString() ? "?" + params.toString() : ""}`);
   };
 
   if (!gateways.length) return null;

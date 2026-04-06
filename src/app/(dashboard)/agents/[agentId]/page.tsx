@@ -26,7 +26,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
 
   return (
     <div className="px-10 py-10 max-w-[1000px]">
-      <Link href="/" className="back-link inline-flex items-center gap-1.5 text-[12px] font-medium mb-8">
+      <Link href={sp.gw ? `/?gw=${sp.gw}` : "/"} className="back-link inline-flex items-center gap-1.5 text-[12px] font-medium mb-8">
         <ArrowLeft size={14} strokeWidth={1.5} /> Back
       </Link>
 

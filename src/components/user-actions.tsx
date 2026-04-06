@@ -34,10 +34,8 @@ export function UserActions({ gateways, isSuperAdmin, defaultGatewayId }: {
 
     if (isSuperAdmin) {
       payload.role = form.get("role") || "user";
-      payload.gateway_id = form.get("gateway_id") || undefined;
-    } else {
-      payload.gateway_id = defaultGatewayId;
     }
+    payload.gateway_id = form.get("gateway_id") || defaultGatewayId || undefined;
     payload.workspace_role = form.get("workspace_role") || "viewer";
 
     const res = await fetch("/api/users", {
@@ -120,18 +118,8 @@ export function UserActions({ gateways, isSuperAdmin, defaultGatewayId }: {
               </div>
             )}
 
-            {isSuperAdmin && (
-              <>
-                <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.1em] block mb-1" style={{ color: "var(--text-muted)" }}>Workspace</label>
-                  <select name="gateway_id" defaultValue=""
-                    className={inputClass} style={{ ...inputStyle, appearance: "none" as const }}>
-                    <option value="">No workspace</option>
-                    {gateways.map((gw) => <option key={gw.id} value={gw.id}>{gw.name}</option>)}
-                  </select>
-                </div>
-              </>
-            )}
+            {/* Workspace is implicit from current context */}
+            <input type="hidden" name="gateway_id" value={defaultGatewayId || ""} />
 
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-[0.1em] block mb-1" style={{ color: "var(--text-muted)" }}>Workspace role</label>

@@ -37,10 +37,17 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   let profiles = [];
   let access = [];
 
+  // Always include global/super_admin users (Jeremy, Guillermo)
+  const { data: globalUsers } = await supabase
+    .from("user_profiles")
+    .select("*")
+    .eq("role", "super_admin")
+    .order("created_at");
+
   if (isSuperAdmin) {
     const { data: p } = await supabase
       .from("user_profiles").select("*").neq("role", "super_admin").order("created_at");
-    profiles = p || [];
+    profiles = [...(globalUsers || []), ...(p || [])];
     const { data: a } = await supabase.from("workspace_access").select("*, gateways(name)");
     access = a || [];
   } else if (gwId) {
@@ -49,7 +56,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       .select("*, user_profiles(*), gateways(name)")
       .eq("gateway_id", gwId);
     access = (a || []).filter((x) => x.user_profiles?.role !== "super_admin");
-    profiles = access.map((x) => x.user_profiles).filter(Boolean);
+    profiles = [...(globalUsers || []), ...access.map((x) => x.user_profiles).filter(Boolean)];
   }
 
   const { data: gateways } = await supabase.from("gateways").select("id, name");
@@ -84,38 +91,22 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <div className="border rounded-lg overflow-hidden" style={{ borderColor: "var(--border-subtle)", background: "var(--bg-surface)" }}>
           <div className="px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider border-b flex"
             style={{ color: "var(--text-muted)", background: "var(--bg-raised)", borderColor: "var(--border-subtle)" }}>
-            <span className="w-2/5">User</span>
-            <span className="w-1/5">Role</span>
-            <span className="w-2/5">Workspaces</span>
+            <span className="w-3/5">User</span>
+            <span className="w-2/5">Role</span>
           </div>
           {profiles.map((p, i) => {
-            const userAccess = access.filter((a) => a.user_id === p.id);
             return (
               <div key={p.id} className="px-5 py-3 flex items-center text-[12px]"
                 style={{ borderBottom: i < profiles.length - 1 ? "1px solid var(--border-subtle)" : undefined }}>
-                <div className="w-2/5">
+                <div className="w-3/5">
                   <p className="font-semibold">{p.name || p.email}</p>
                   <p className="font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>{p.email}</p>
                 </div>
-                <div className="w-1/5">
+                <div className="w-2/5">
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded"
                     style={{ color: roleColors[p.role] || "var(--text-muted)", background: "var(--bg-raised)" }}>
-                    {p.role}
+                    {p.role === "super_admin" ? "global" : p.role}
                   </span>
-                </div>
-                <div className="w-2/5">
-                  {userAccess.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {userAccess.map((a) => (
-                        <span key={a.id} className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                          style={{ background: "var(--bg-raised)", color: "var(--text-muted)" }}>
-                          {a.gateways?.name || "?"} ({a.role})
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>No workspace</span>
-                  )}
                 </div>
               </div>
             );
