@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Server, ChevronDown, Check, Circle } from "lucide-react";
 
 interface Gateway {
@@ -16,7 +16,9 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const current = gateways.find((g) => g.id === currentId) || gateways[0];
+  const searchParams = useSearchParams();
+  const activeId = searchParams.get("gw") || currentId;
+  const current = gateways.find((g) => g.id === activeId) || gateways[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -76,7 +78,7 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
             borderColor: "var(--border-subtle)",
           }}>
           {gateways.map((gw) => {
-            const isSelected = gw.id === currentId;
+            const isSelected = gw.id === activeId;
             return (
               <button key={gw.id} onClick={() => select(gw.id)}
                 className="w-full flex items-center gap-3 px-3 py-3 text-left transition-all"

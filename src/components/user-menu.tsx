@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Plus } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
-export function UserMenu({ email, name }: { email: string; name?: string }) {
+export function UserMenu({ email, name, role }: { email: string; name?: string; role?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -50,6 +50,16 @@ export function UserMenu({ email, name }: { email: string; name?: string }) {
       {open && (
         <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border overflow-hidden shadow-lg z-50"
           style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+          {role === "super_admin" && (
+            <a href="/gateways"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[12px] font-medium transition-all text-left"
+              style={{ color: "var(--text-muted)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-raised)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+              <Plus size={14} strokeWidth={1.5} />
+              Connect Gateway
+            </a>
+          )}
           <button onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[12px] font-medium transition-all text-left"
             style={{ color: "var(--text-muted)" }}
