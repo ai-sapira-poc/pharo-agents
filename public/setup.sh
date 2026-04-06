@@ -202,10 +202,18 @@ except Exception as e:
     sys.exit(1)
 
 agents_config = config.get("agents", {})
+if not agents_config:
+    print(json.dumps({"error": f"No 'agents' key found in config. Top-level keys: {list(config.keys())}"}))
+    sys.exit(1)
+
 defaults = agents_config.get("defaults", {})
 primary_model = defaults.get("model", {}).get("primary", "unknown")
 agent_list = agents_config.get("list", [])
 bindings = config.get("bindings", [])
+
+if not agent_list:
+    print(json.dumps({"error": f"No agents in 'agents.list'. agents keys: {list(agents_config.keys())}"}))
+    sys.exit(1)
 
 # Extract auth token
 token = config.get("gateway", {}).get("auth", {}).get("token", "")
