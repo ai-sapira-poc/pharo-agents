@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GatewaySelector } from "@/components/gateway-selector";
 import { NavLink } from "@/components/nav-link";
-import { Activity } from "lucide-react";
+import { Suspense } from "react";
 import { UserMenu } from "@/components/user-menu";
 import { getUser } from "@/lib/supabase-server";
 import { supabase } from "@/lib/supabase";
@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase";
 const navItems = [
   { href: "/", label: "Dashboard", iconName: "Grid3x3" },
   { href: "/skills", label: "Skills", iconName: "Layers" },
-  { href: "/gateways", label: "Gateways", iconName: "Server" },
   { href: "/settings", label: "Settings", iconName: "Sliders" },
 ];
 
@@ -41,22 +40,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
         
         <GatewaySelector gateways={gateways} currentId={defaultGw} />
         
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {navItems.map((item) => (
-            <NavLink key={item.href} href={item.href} label={item.label} iconName={item.iconName} />
-          ))}
-          {(user?.profile?.role === "super_admin" || user?.profile?.canManageUsers) && (
-            <NavLink href="/users" label="Users" iconName="Users" />
-          )}
-        </nav>
+        <Suspense fallback={<nav className="flex-1 px-3 py-4" />}>
+          <nav className="flex-1 px-3 py-4 space-y-0.5">
+            {navItems.map((item) => (
+              <NavLink key={item.href} href={item.href} label={item.label} iconName={item.iconName} />
+            ))}
+            {(user?.profile?.role === "super_admin" || user?.profile?.canManageUsers) && (
+              <NavLink href="/users" label="Users" iconName="Users" />
+            )}
+          </nav>
+        </Suspense>
         <div className="px-3 py-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-          <div className="flex items-center justify-between px-3 mb-2">
-            <div className="flex items-center gap-2">
-              <Activity size={10} style={{ color: "var(--success)" }} />
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {gateways.length} gateway{gateways.length !== 1 ? "s" : ""}
-              </span>
-            </div>
+          <div className="flex items-center justify-end px-3 mb-2">
             <ThemeToggle />
           </div>
           {user && <UserMenu email={user.email || ""} name={user.profile?.name} />}
