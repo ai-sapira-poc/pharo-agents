@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { Server, ChevronDown, Check, Circle } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { ChevronDown, Check, Circle } from "lucide-react";
 
 interface Gateway {
   id: string;
@@ -16,7 +16,12 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const current = gateways.find((g) => g.id === currentId) || gateways[0];
+  const searchParams = useSearchParams();
+
+  // Use URL param if available, otherwise fall back to server-provided default
+  const gwFromUrl = searchParams.get("gw");
+  const activeId = gwFromUrl || currentId;
+  const current = gateways.find((g) => g.id === activeId) || gateways[0];
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -28,12 +33,11 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
 
   const select = (gwId: string) => {
     setOpen(false);
-    const params = new URLSearchParams();
-    if (gwId) params.set("gw", gwId);
-    router.push(`/${params.toString() ? "?" + params.toString() : ""}`);
+    router.push(`${pathname}?gw=${gwId}`);
   };
 
-  if (!gateways.length) return null;
+  // Hide selector if user has only one workspace
+  if (gateways.length <= 1) return null;
 
   return (
     <div ref={ref} className="px-4 py-3 border-b relative" style={{ borderColor: "var(--border-subtle)" }}>
@@ -76,7 +80,7 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
             borderColor: "var(--border-subtle)",
           }}>
           {gateways.map((gw) => {
-            const isSelected = gw.id === currentId;
+            const isSelected = gw.id === activeId;
             return (
               <button key={gw.id} onClick={() => select(gw.id)}
                 className="w-full flex items-center gap-3 px-3 py-3 text-left transition-all"

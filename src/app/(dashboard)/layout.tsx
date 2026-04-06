@@ -1,30 +1,19 @@
-import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GatewaySelector } from "@/components/gateway-selector";
 import { NavLink } from "@/components/nav-link";
 import { Activity } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
-import { getUser } from "@/lib/supabase-server";
-import { supabase } from "@/lib/supabase";
+import { getUser, getUserWorkspaces } from "@/lib/supabase-server";
 
 const navItems = [
   { href: "/", label: "Dashboard", iconName: "Grid3x3" },
   { href: "/skills", label: "Skills", iconName: "Layers" },
-  { href: "/gateways", label: "Gateways", iconName: "Server" },
   { href: "/settings", label: "Settings", iconName: "Sliders" },
 ];
 
-async function getGatewaysList() {
-  const { data } = await supabase
-    .from("gateways")
-    .select("id, name, status, agent_count")
-    .order("registered_at");
-  return data || [];
-}
-
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const gateways = await getGatewaysList();
   const user = await getUser();
+  const gateways = user ? await getUserWorkspaces(user.id) : [];
   const defaultGw = gateways[0]?.id || null;
 
   return (
@@ -38,9 +27,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <p className="text-[11px] font-medium uppercase tracking-[0.15em] mt-1"
             style={{ color: "var(--text-muted)", fontFamily: "var(--font-sans)" }}>Agent Fleet</p>
         </div>
-        
+
         <GatewaySelector gateways={gateways} currentId={defaultGw} />
-        
+
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           {navItems.map((item) => (
             <NavLink key={item.href} href={item.href} label={item.label} iconName={item.iconName} />
@@ -54,7 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <div className="flex items-center gap-2">
               <Activity size={10} style={{ color: "var(--success)" }} />
               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {gateways.length} gateway{gateways.length !== 1 ? "s" : ""}
+                {gateways.length} workspace{gateways.length !== 1 ? "s" : ""}
               </span>
             </div>
             <ThemeToggle />

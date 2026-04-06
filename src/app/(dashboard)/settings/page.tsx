@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { getGateway, getDefaultGatewayId, getAgents, getGatewaySettings } from "@/lib/openclaw-client";
-import { Server, Cpu, Radio, Shield, Wifi, WifiOff } from "lucide-react";
+import { Server, Cpu, Radio, Shield, Wifi, WifiOff, Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -145,6 +145,26 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </div>
         </div>
       )}
+
+      {/* Connect a new gateway */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Plus size={14} strokeWidth={1.5} style={{ color: "var(--text-muted)" }} />
+          <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--text-muted)" }}>Connect a New Gateway</h2>
+        </div>
+        <div className="border rounded-lg p-5" style={{ borderColor: "var(--border-subtle)", background: "var(--bg-surface)" }}>
+          <p className="text-[12px] mb-3" style={{ color: "var(--text-secondary)" }}>
+            Run this on any machine with OpenClaw installed:
+          </p>
+          <code className="block text-[11px] font-mono px-3 py-2 rounded-md"
+            style={{ background: "var(--bg-raised)", color: "var(--text-primary)" }}>
+            curl -fsSL https://pharo-agents.vercel.app/setup.sh | bash
+          </code>
+          <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>
+            The script auto-detects your OpenClaw config, registers agents, and sets up heartbeats.
+          </p>
+        </div>
+      </div>
 
       {/* Security */}
       <div className="mb-8">

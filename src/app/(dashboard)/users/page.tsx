@@ -33,6 +33,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     if (!adminGateways.some((a) => a.gateway_id === gwId)) redirect("/");
   }
 
+  // Global users visible across all workspaces
+  const GLOBAL_USER_EMAILS = ["jeremie@sapira.ai", "guillermo@sapira.ai"];
+
   // Get users (exclude super admins)
   let profiles = [];
   let access = [];
@@ -44,12 +47,25 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     const { data: a } = await supabase.from("workspace_access").select("*, gateways(name)");
     access = a || [];
   } else if (gwId) {
+    // Get workspace-specific users
     const { data: a } = await supabase
       .from("workspace_access")
       .select("*, user_profiles(*), gateways(name)")
       .eq("gateway_id", gwId);
     access = (a || []).filter((x) => x.user_profiles?.role !== "super_admin");
     profiles = access.map((x) => x.user_profiles).filter(Boolean);
+
+    // Also include global users who may not have explicit workspace_access
+    const { data: globalProfiles } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .in("email", GLOBAL_USER_EMAILS)
+      .neq("role", "super_admin");
+    for (const gp of (globalProfiles || [])) {
+      if (!profiles.some((p) => p.id === gp.id)) {
+        profiles.push(gp);
+      }
+    }
   }
 
   const { data: gateways } = await supabase.from("gateways").select("id, name");

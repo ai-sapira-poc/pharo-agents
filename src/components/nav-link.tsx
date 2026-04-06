@@ -1,20 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Grid3x3, Layers, Server, Sliders, Users } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Grid3x3, Layers, Sliders, Users } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<{ size: number; strokeWidth: number }>> = {
-  Grid3x3, Layers, Server, Sliders, Users,
+  Grid3x3, Layers, Sliders, Users,
 };
 
 export function NavLink({ href, label, iconName }: { href: string; label: string; iconName: string }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const gw = searchParams.get("gw");
   const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
   const Icon = iconMap[iconName] || Grid3x3;
+  const fullHref = gw ? `${href}?gw=${gw}` : href;
 
   return (
-    <Link href={href}
+    <Link href={fullHref}
       className="flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium transition-all"
       style={{
         color: isActive ? "var(--text-primary)" : "var(--text-muted)",

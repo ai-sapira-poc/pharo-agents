@@ -4,6 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Redirect /gateways to /settings (gateway info is now in settings)
+  if (pathname === "/gateways") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/settings";
+    return NextResponse.redirect(url);
+  }
+
   // Public routes that don't need auth
   if (
     pathname.startsWith("/auth") ||
