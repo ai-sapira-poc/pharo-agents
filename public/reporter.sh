@@ -33,9 +33,14 @@ PHARO_URL = os.environ.get("PHARO_URL", "https://pharo-agents.vercel.app")
 GW_ID = os.environ.get("GW_ID", "GATEWAY_ID")
 
 def read_config():
-    """Parse openclaw.json (JSON5 format)."""
+    """Parse openclaw.json — tries valid JSON first, falls back to JSON5 cleanup."""
     with open(CONFIG_FILE) as f:
         raw = f.read()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+    # Fall back to JSON5 cleanup (comments, trailing commas, unquoted keys)
     raw = re.sub(r'//.*', '', raw)
     raw = re.sub(r',(\s*[}\]])', r'\1', raw)
     raw = re.sub(r"'([^']*)'", r'"\1"', raw)
@@ -138,7 +143,8 @@ for a in agent_list:
     
     workspace = a.get("workspace", os.path.join(OPENCLAW_DIR, "workspace"))
     agent_dir = a.get("agentDir", os.path.join(OPENCLAW_DIR, "agents", agent_id, "agent"))
-    model = a.get("model", primary_model)
+    model_val = a.get("model", primary_model)
+    model = model_val.get("primary", primary_model) if isinstance(model_val, dict) else model_val
     
     # Read identity files
     soul = read_file_safe(os.path.join(workspace, "SOUL.md"))
