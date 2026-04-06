@@ -211,9 +211,15 @@ primary_model = defaults.get("model", {}).get("primary", "unknown")
 agent_list = agents_config.get("list", [])
 bindings = config.get("bindings", [])
 
+# If no explicit agent list, synthesize a "main" agent from defaults
 if not agent_list:
-    print(json.dumps({"error": f"No agents in 'agents.list'. agents keys: {list(agents_config.keys())}"}))
-    sys.exit(1)
+    default_workspace = defaults.get("workspace", os.path.join(OPENCLAW_DIR, "workspace"))
+    agent_list = [{
+        "id": "main",
+        "name": os.uname()[1],
+        "workspace": default_workspace,
+        "model": defaults.get("model", primary_model),
+    }]
 
 # Extract auth token
 token = config.get("gateway", {}).get("auth", {}).get("token", "")
