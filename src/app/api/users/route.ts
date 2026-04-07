@@ -10,11 +10,19 @@ export async function GET(req: NextRequest) {
   const gwParam = req.nextUrl.searchParams.get("gw");
 
   if (role === "super_admin") {
-    // Super admins see all non-super_admin users
+    if (gwParam) {
+      // Super admin with workspace filter: show only users in this workspace
+      const { data: access } = await supabase
+        .from("workspace_access")
+        .select("*, user_profiles(*), gateways(name)")
+        .eq("gateway_id", gwParam);
+      const profiles = (access || []).map((a: Record<string, unknown>) => a.user_profiles).filter(Boolean);
+      return NextResponse.json({ profiles, access: access || [] });
+    }
+    // Super admins without filter see all users
     const { data: profiles } = await supabase
       .from("user_profiles")
       .select("*")
-      .neq("role", "super_admin")
       .order("created_at");
     const { data: access } = await supabase
       .from("workspace_access")

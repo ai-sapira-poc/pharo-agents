@@ -1,6 +1,33 @@
 import type { Agent, CronJob } from "./types";
 import { supabase } from "./supabase";
 
+// Claude API pricing per 1M tokens (USD)
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  "claude-sonnet-4": { input: 3.0, output: 15.0 },
+  "claude-opus-4": { input: 15.0, output: 75.0 },
+  "claude-haiku-3": { input: 0.25, output: 1.25 },
+  "claude-3-5-sonnet": { input: 3.0, output: 15.0 },
+  "claude-3-5-haiku": { input: 0.8, output: 4.0 },
+  "claude-3-opus": { input: 15.0, output: 75.0 },
+  "claude-3-haiku": { input: 0.25, output: 1.25 },
+};
+
+const DEFAULT_PRICING = { input: 3.0, output: 15.0 };
+
+function estimateCostFromTokens(totalTokens: number, model: string): number {
+  if (totalTokens <= 0) return 0;
+  let pricing = DEFAULT_PRICING;
+  for (const [key, p] of Object.entries(MODEL_PRICING)) {
+    if (model.includes(key) || key.includes(model)) {
+      pricing = p;
+      break;
+    }
+  }
+  const inputTokens = totalTokens * 0.6;
+  const outputTokens = totalTokens * 0.4;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
 export interface Gateway {
   id: string;
   name: string;
@@ -56,10 +83,13 @@ export async function getAgents(gatewayId?: string): Promise<(Agent & { config?:
     } catch { /* ignore */ }
 
     const sessions = parsedConfig?.sessions || { count: 0, total_tokens: 0, total_cost: 0, models: [] };
+    const model = (a.model || parsedConfig?.sessions?.models?.[0] || "unknown") as string;
+    const rawCost = sessions.total_cost;
+    const hasCostData = rawCost > 0;
     return {
       id: a.agent_id as string,
       name: (a.name || a.agent_id) as string,
-      model: (a.model || parsedConfig?.sessions?.models?.[0] || "unknown") as string,
+      model,
       workspace: (a.workspace || "") as string,
       status: (sessions.count > 0 ? "active" : "idle") as "active" | "idle" | "error",
       purpose: (a.purpose || "") as string,
@@ -69,7 +99,8 @@ export async function getAgents(gatewayId?: string): Promise<(Agent & { config?:
       sessionCount: sessions.count,
       gatewayId: (gw?.id as string) || "",
       gatewayName: (gw?.name as string) || "",
-      estimatedCost: sessions.total_cost,
+      estimatedCost: hasCostData ? rawCost : estimateCostFromTokens(sessions.total_tokens, model),
+      isCostEstimated: !hasCostData && sessions.total_tokens > 0,
       config: parsedConfig,
     };
   });

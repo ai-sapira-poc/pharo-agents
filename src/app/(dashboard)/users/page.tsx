@@ -33,30 +33,25 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     if (!adminGateways.some((a) => a.gateway_id === gwId)) redirect("/");
   }
 
-  // Get users (exclude super admins)
+  // Get users scoped to the selected workspace
   let profiles = [];
   let access = [];
 
-  // Always include global/super_admin users (Jeremy, Guillermo)
-  const { data: globalUsers } = await supabase
-    .from("user_profiles")
-    .select("*")
-    .eq("role", "super_admin")
-    .order("created_at");
-
-  if (isSuperAdmin) {
-    const { data: p } = await supabase
-      .from("user_profiles").select("*").neq("role", "super_admin").order("created_at");
-    profiles = [...(globalUsers || []), ...(p || [])];
+  if (isSuperAdmin && !gwId) {
+    // Super admin with no workspace filter: show all users
+    const { data: allProfiles } = await supabase
+      .from("user_profiles").select("*").order("created_at");
+    profiles = allProfiles || [];
     const { data: a } = await supabase.from("workspace_access").select("*, gateways(name)");
     access = a || [];
   } else if (gwId) {
+    // Specific workspace selected: show only users with access to this workspace
     const { data: a } = await supabase
       .from("workspace_access")
       .select("*, user_profiles(*), gateways(name)")
       .eq("gateway_id", gwId);
-    access = (a || []).filter((x) => x.user_profiles?.role !== "super_admin");
-    profiles = [...(globalUsers || []), ...access.map((x) => x.user_profiles).filter(Boolean)];
+    access = a || [];
+    profiles = access.map((x) => x.user_profiles).filter(Boolean);
   }
 
   const { data: gateways } = await supabase.from("gateways").select("id, name");

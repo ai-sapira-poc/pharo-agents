@@ -20,6 +20,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   
   const totalTokens = agents.reduce((s, a) => s + (a.totalTokens || 0), 0);
   const totalCost = agents.reduce((s, a) => s + ((a.estimatedCost || 0) || 0), 0);
+  const anyEstimated = agents.some((a) => a.isCostEstimated);
   const active = agents.filter((a) => a.status === "active").length;
 
   return (
@@ -35,7 +36,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         {[
           { label: "Active", value: `${active}/${agents.length}`, Icon: Users },
           { label: "Tokens", value: fmt(totalTokens), Icon: Hash },
-          { label: "Cost", value: `$${totalCost.toFixed(2)}`, Icon: DollarSign },
+          { label: "Cost", value: `${anyEstimated ? "~" : ""}$${totalCost.toFixed(2)}`, Icon: DollarSign },
         ].map((s) => (
           <div key={s.label} className="border rounded-lg p-4"
             style={{ borderColor: "var(--border-subtle)", background: "var(--bg-surface)" }}>
@@ -65,6 +66,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           {agents.map((agent) => {
             const pct = agent.contextTokens ? Math.round(((agent.totalTokens || 0) / agent.contextTokens) * 100) : 0;
             const cost = agent.estimatedCost || 0;
+            const costPrefix = agent.isCostEstimated ? "~" : "";
 
             return (
               <Link key={agent.id} href={`/agents/${agent.id}${gwId ? '?gw=' + gwId : ''}`}
@@ -87,7 +89,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Cost</p>
-                    <p className="text-[14px] font-mono">${cost.toFixed(2)}</p>
+                    <p className="text-[14px] font-mono">{costPrefix}${cost.toFixed(2)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>Sessions</p>
