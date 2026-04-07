@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Server, ChevronDown, Check, Circle } from "lucide-react";
+import { ChevronDown, Check, Circle, Loader2 } from "lucide-react";
 
 interface Gateway {
   id: string;
@@ -13,6 +13,7 @@ interface Gateway {
 
 export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; currentId: string | null }) {
   const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -28,7 +29,12 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    setIsLoading(false);
+  }, [searchParams]);
+
   const select = (gwId: string) => {
+    if (gwId !== activeId) setIsLoading(true);
     setOpen(false);
     const params = new URLSearchParams();
     if (gwId) params.set("gw", gwId);
@@ -59,15 +65,18 @@ export function GatewaySelector({ gateways, currentId }: { gateways: Gateway[]; 
             {current?.name || "Select workspace"}
           </p>
           <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            {current?.agent_count || 0} agent{(current?.agent_count || 0) !== 1 ? "s" : ""}
+            {isLoading ? "Switching..." : `${current?.agent_count || 0} agent${(current?.agent_count || 0) !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <ChevronDown size={14} strokeWidth={1.5}
-          className="flex-shrink-0 transition-transform"
-          style={{
-            color: "var(--text-muted)",
-            transform: open ? "rotate(180deg)" : "rotate(0)",
-          }} />
+        {isLoading
+          ? <Loader2 size={14} strokeWidth={1.5} className="flex-shrink-0 animate-spin" style={{ color: "var(--text-muted)" }} />
+          : <ChevronDown size={14} strokeWidth={1.5}
+              className="flex-shrink-0 transition-transform"
+              style={{
+                color: "var(--text-muted)",
+                transform: open ? "rotate(180deg)" : "rotate(0)",
+              }} />
+        }
       </button>
 
       {/* Dropdown */}
