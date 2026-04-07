@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GatewaySelector } from "@/components/gateway-selector";
 import { NavLink } from "@/components/nav-link";
+import { PageTransition } from "@/components/page-transition";
 import { Suspense } from "react";
 import { UserMenu } from "@/components/user-menu";
 import { getUser } from "@/lib/supabase-server";
@@ -53,13 +54,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </nav>
         </Suspense>
         <div className="px-3 py-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-          <div className="flex items-center justify-end px-3 mb-2">
-            <ThemeToggle />
-          </div>
           {user && <UserMenu email={user.email || ""} name={user.profile?.name} role={user.profile?.role} />}
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto" style={{ background: "var(--bg-root)" }}>{children}</main>
+      <main className="flex-1 overflow-y-auto" style={{ background: "var(--bg-root)" }}>
+        <div className="flex items-center justify-end px-6 py-3">
+          <ThemeToggle />
+        </div>
+        <PageTransition>{children}</PageTransition>
+      </main>
     </div>
   );
 }

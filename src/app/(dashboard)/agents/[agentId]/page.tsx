@@ -55,7 +55,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
           { label: "Tokens", value: fmt(sessions.total_tokens), Icon: Hash },
           { label: "Sessions", value: String(sessions.count), Icon: MessageCircle },
           { label: "Context", value: `${pct}%`, Icon: Gauge },
-          { label: "Cost", value: `$${sessions.total_cost.toFixed(2)}`, Icon: DollarSign },
+          { label: "Cost", value: `${agent.isCostEstimated ? "~" : ""}$${(agent.estimatedCost || 0).toFixed(2)}`, Icon: DollarSign },
         ].map((m) => (
           <div key={m.label} className="border rounded-lg p-4"
             style={{ borderColor: "var(--border-subtle)", background: "var(--bg-surface)" }}>

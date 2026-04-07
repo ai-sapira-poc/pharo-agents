@@ -77,3 +77,14 @@ h1, h2 {
 .agent-card:hover { border-color: var(--text-primary); }
 .back-link { color: var(--text-muted); transition: color 150ms; }
 .back-link:hover { color: var(--text-primary); }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-raised) 25%, var(--bg-overlay) 50%, var(--bg-raised) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}

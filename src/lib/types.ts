@@ -13,6 +13,7 @@ export interface Agent {
   gatewayId?: string;
   gatewayName?: string;
   estimatedCost?: number;
+  isCostEstimated?: boolean;
   purpose?: string;
   emoji?: string;
   tools?: Record<string, unknown>;
