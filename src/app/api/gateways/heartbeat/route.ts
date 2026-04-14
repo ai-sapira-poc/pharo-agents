@@ -10,6 +10,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "gateway_id required" }, { status: 400 });
     }
 
+    // Check if gateway was offline (for recovery alert)
+    const { data: currentGw } = await supabase
+      .from("gateways")
+      .select("status")
+      .eq("id", gateway_id)
+      .single();
+    const wasOffline = currentGw?.status === "offline";
+
     // Update gateway metadata
     await supabase.from("gateways").update({
       status: "online",
@@ -54,6 +62,31 @@ export async function POST(req: NextRequest) {
           updated_at: reported_at || new Date().toISOString(),
         }, { onConflict: "gateway_id,agent_id" });
       }
+    }
+
+    // Send recovery alert if gateway was offline
+    if (wasOffline && process.env.SLACK_BOT_TOKEN_HANSOLO) {
+      try {
+        const token = process.env.SLACK_BOT_TOKEN_HANSOLO;
+        const openRes = await fetch("https://slack.com/api/conversations.open", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+          body: JSON.stringify({ users: "U08SMBT6PJP" }),
+        });
+        const openData = await openRes.json() as { channel?: { id?: string } };
+        const chId = openData?.channel?.id;
+        if (chId) {
+          await fetch("https://slack.com/api/chat.postMessage", {
+            method: "POST",
+            headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              channel: chId,
+              text: `:large_green_circle: *${name || gateway_id}* is back online`,
+              mrkdwn: true,
+            }),
+          });
+        }
+      } catch { /* best effort */ }
     }
 
     return NextResponse.json({ ok: true, agents_updated: agents?.length || 0 });
