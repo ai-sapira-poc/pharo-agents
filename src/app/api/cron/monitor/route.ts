@@ -10,19 +10,10 @@ async function sendSlackDM(text: string) {
     console.log("No SLACK_BOT_TOKEN_HANSOLO — skipping DM:", text);
     return;
   }
-  const openRes = await fetch("https://slack.com/api/conversations.open", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + SLACK_BOT_TOKEN, "Content-Type": "application/json" },
-    body: JSON.stringify({ users: JEREMIE_SLACK_ID }),
-  });
-  const openData = await openRes.json() as { channel?: { id?: string } };
-  const channelId = openData?.channel?.id;
-  if (!channelId) return;
-
   await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
     headers: { Authorization: "Bearer " + SLACK_BOT_TOKEN, "Content-Type": "application/json" },
-    body: JSON.stringify({ channel: channelId, text, mrkdwn: true }),
+    body: JSON.stringify({ channel: JEREMIE_SLACK_ID, text, mrkdwn: true }),
   });
 }
 

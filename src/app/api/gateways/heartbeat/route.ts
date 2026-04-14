@@ -67,25 +67,18 @@ export async function POST(req: NextRequest) {
     // Send recovery alert if gateway was offline
     if (wasOffline && process.env.SLACK_BOT_TOKEN_HANSOLO) {
       try {
-        const token = process.env.SLACK_BOT_TOKEN_HANSOLO;
-        const openRes = await fetch("https://slack.com/api/conversations.open", {
+        await fetch("https://slack.com/api/chat.postMessage", {
           method: "POST",
-          headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-          body: JSON.stringify({ users: "U08SMBT6PJP" }),
+          headers: {
+            Authorization: "Bearer " + process.env.SLACK_BOT_TOKEN_HANSOLO,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel: "U08SMBT6PJP",
+            text: `:large_green_circle: *${name || gateway_id}* is back online`,
+            mrkdwn: true,
+          }),
         });
-        const openData = await openRes.json() as { channel?: { id?: string } };
-        const chId = openData?.channel?.id;
-        if (chId) {
-          await fetch("https://slack.com/api/chat.postMessage", {
-            method: "POST",
-            headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              channel: chId,
-              text: `:large_green_circle: *${name || gateway_id}* is back online`,
-              mrkdwn: true,
-            }),
-          });
-        }
       } catch { /* best effort */ }
     }
 
